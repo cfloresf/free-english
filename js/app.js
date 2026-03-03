@@ -108,6 +108,11 @@ const App = {
             this.nextStep();
         });
 
+        // Feedback continue button (inside the feedback overlay)
+        document.getElementById('btn-feedback-continue').addEventListener('click', () => {
+            this.nextStep();
+        });
+
         // Lesson complete
         document.getElementById('btn-next-lesson').addEventListener('click', () => {
             const recommended = AIEngine.getRecommendedLesson(Storage.getUserData().level);
@@ -490,10 +495,12 @@ const App = {
         const btnCheck = document.getElementById('btn-check-answer');
         const btnNext = document.getElementById('btn-next-step');
         const feedback = document.getElementById('lesson-feedback');
+        const actionsDiv = document.querySelector('.lesson-actions');
 
         btnCheck.classList.remove('hidden');
         btnNext.classList.add('hidden');
         feedback.classList.add('hidden');
+        if (actionsDiv) actionsDiv.classList.remove('hidden');
         this.selectedOption = null;
 
         switch (step.type) {
@@ -896,12 +903,12 @@ const App = {
             Storage.trackWord(step.word.toLowerCase().split('/')[0].trim(), correct);
         }
 
-        // Show feedback
+        // Show feedback with continue button inside it
         this.showLessonFeedback(correct, feedbackMessage);
 
-        // Show next button
-        document.getElementById('btn-check-answer').classList.add('hidden');
-        document.getElementById('btn-next-step').classList.remove('hidden');
+        // Hide the bottom action buttons - continue is now inside feedback
+        const actionsDiv = document.querySelector('.lesson-actions');
+        if (actionsDiv) actionsDiv.classList.add('hidden');
     },
 
     showLessonFeedback(correct, message) {
