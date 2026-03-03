@@ -205,17 +205,20 @@ const App = {
     startAssessment() {
         this.assessmentAnswers = [];
         this.currentAssessmentIndex = 0;
+        // Generate unique assessment questions each time
+        this.generatedAssessment = QuestionGenerator.generateAssessment(5);
         this.renderAssessmentQuestion();
     },
 
     renderAssessmentQuestion() {
-        const question = ASSESSMENT_QUESTIONS[this.currentAssessmentIndex];
+        const questions = this.generatedAssessment;
+        const question = questions[this.currentAssessmentIndex];
         if (!question) {
             this.finishAssessment();
             return;
         }
 
-        const total = ASSESSMENT_QUESTIONS.length;
+        const total = questions.length;
         const current = this.currentAssessmentIndex + 1;
 
         document.getElementById('assessment-progress-fill').style.width =
@@ -467,7 +470,42 @@ const App = {
 
     // ========== LESSON FLOW ==========
     startLesson(lesson, category) {
-        this.currentLesson = lesson;
+        // Create a copy of the lesson with dynamically generated steps
+        const userData = Storage.getUserData();
+        const level = userData?.level || 'A1';
+
+        // Generate dynamic steps and mix with some original steps
+        const dynamicSteps = QuestionGenerator.generateLessonSteps(level, category, 4);
+        const originalSteps = [...lesson.steps];
+
+        // Mix: take first 2 original steps (usually "learn" intro) + dynamic exercises
+        const mixedSteps = [];
+        let origIdx = 0;
+
+        // Start with a learn step from original if available
+        for (let i = 0; i < originalSteps.length && origIdx < 2; i++) {
+            if (originalSteps[i].type === 'learn') {
+                mixedSteps.push(originalSteps[i]);
+                origIdx++;
+            }
+        }
+
+        // Add dynamic steps
+        for (const step of dynamicSteps) {
+            if (step.type !== 'learn') {
+                mixedSteps.push(step);
+            }
+        }
+
+        // If we have less than 5 steps, add more from originals
+        for (const step of originalSteps) {
+            if (mixedSteps.length >= 6) break;
+            if (!mixedSteps.includes(step)) {
+                mixedSteps.push(step);
+            }
+        }
+
+        this.currentLesson = { ...lesson, steps: mixedSteps };
         this.currentStep = 0;
         this.lessonXP = 0;
         this.lessonCorrect = 0;
