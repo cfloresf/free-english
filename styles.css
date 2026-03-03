@@ -1355,14 +1355,7 @@ body {
 
 /* Lesson Feedback */
 .lesson-feedback {
-    position: fixed;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 100%;
-    max-width: 480px;
-    padding: 20px;
-    z-index: 50;
+    padding: 0 0 16px;
     animation: slideUp 0.3s ease;
 }
 
@@ -1376,7 +1369,7 @@ body {
     border-radius: var(--radius-lg);
     padding: 20px;
     text-align: center;
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-md);
 }
 
 .feedback-content.success {

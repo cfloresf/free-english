@@ -495,12 +495,10 @@ const App = {
         const btnCheck = document.getElementById('btn-check-answer');
         const btnNext = document.getElementById('btn-next-step');
         const feedback = document.getElementById('lesson-feedback');
-        const actionsDiv = document.querySelector('.lesson-actions');
 
         btnCheck.classList.remove('hidden');
         btnNext.classList.add('hidden');
         feedback.classList.add('hidden');
-        if (actionsDiv) actionsDiv.classList.remove('hidden');
         this.selectedOption = null;
 
         switch (step.type) {
@@ -906,9 +904,8 @@ const App = {
         // Show feedback with continue button inside it
         this.showLessonFeedback(correct, feedbackMessage);
 
-        // Hide the bottom action buttons - continue is now inside feedback
-        const actionsDiv = document.querySelector('.lesson-actions');
-        if (actionsDiv) actionsDiv.classList.add('hidden');
+        // Hide the check button since feedback has its own continue button
+        document.getElementById('btn-check-answer').classList.add('hidden');
     },
 
     showLessonFeedback(correct, message) {
