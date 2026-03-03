@@ -1,0 +1,19 @@
+{
+    "name": "FreeEnglish - Aprende Inglés con IA",
+    "short_name": "FreeEnglish",
+    "description": "Tu tutor personal de inglés con IA adaptativa, reconocimiento de voz y lecciones personalizadas",
+    "start_url": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#0f0f23",
+    "theme_color": "#0f0f23",
+    "categories": ["education", "language"],
+    "icons": [
+        {
+            "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='96' fill='%236366f1'/><text x='50%' y='55%' text-anchor='middle' dominant-baseline='middle' font-family='Arial,sans-serif' font-weight='bold' font-size='200' fill='white'>FE</text></svg>",
+            "sizes": "512x512",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
+}

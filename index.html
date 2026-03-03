@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="FreeEnglish - Aprende inglés rápido con IA adaptativa, reconocimiento de voz y lecciones personalizadas">
+    <meta name="theme-color" content="#0f0f23">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>FreeEnglish - Aprende Inglés con IA</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎓</text></svg>">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="app">
+        <!-- Splash Screen -->
+        <div id="splash-screen" class="screen active">
+            <div class="splash-content">
+                <div class="splash-logo">
+                    <div class="logo-icon">
+                        <span class="logo-letter">F</span>
+                        <span class="logo-letter">E</span>
+                    </div>
+                    <div class="logo-pulse"></div>
+                </div>
+                <h1 class="splash-title">Free<span class="accent">English</span></h1>
+                <p class="splash-subtitle">Tu tutor de inglés con IA</p>
+                <div class="splash-loader">
+                    <div class="loader-bar"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Onboarding Screen -->
+        <div id="onboarding-screen" class="screen">
+            <div class="onboarding-container">
+                <div class="onboarding-header">
+                    <h1>¡Bienvenido! 👋</h1>
+                    <p>Vamos a evaluar tu nivel de inglés para crear un plan de estudio personalizado</p>
+                </div>
+                <div class="onboarding-steps">
+                    <div class="step-card" data-step="1">
+                        <div class="step-icon">🎯</div>
+                        <h3>Evaluación Inicial</h3>
+                        <p>Test rápido de 10 preguntas</p>
+                    </div>
+                    <div class="step-card" data-step="2">
+                        <div class="step-icon">🧠</div>
+                        <h3>IA Adaptativa</h3>
+                        <p>Ajusta tu nivel en tiempo real</p>
+                    </div>
+                    <div class="step-card" data-step="3">
+                        <div class="step-icon">🎤</div>
+                        <h3>Práctica con Voz</h3>
+                        <p>Pronunciación y conversación</p>
+                    </div>
+                </div>
+                <div class="name-input-group">
+                    <label for="user-name">¿Cómo te llamas?</label>
+                    <input type="text" id="user-name" placeholder="Tu nombre..." autocomplete="off">
+                </div>
+                <button id="btn-start-assessment" class="btn-primary btn-glow">
+                    <span>Comenzar Evaluación</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Assessment Screen -->
+        <div id="assessment-screen" class="screen">
+            <div class="assessment-container">
+                <div class="assessment-header">
+                    <div class="assessment-progress">
+                        <div class="progress-bar">
+                            <div id="assessment-progress-fill" class="progress-fill"></div>
+                        </div>
+                        <span id="assessment-counter" class="progress-text">1/10</span>
+                    </div>
+                    <div id="assessment-level-badge" class="level-badge">A1</div>
+                </div>
+                <div id="assessment-question-area" class="question-area">
+                    <!-- Question content will be dynamically inserted -->
+                </div>
+                <div id="assessment-options" class="options-grid">
+                    <!-- Options will be dynamically inserted -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Assessment Result Screen -->
+        <div id="result-screen" class="screen">
+            <div class="result-container">
+                <div class="result-animation">
+                    <div class="result-circle">
+                        <svg class="result-ring" viewBox="0 0 120 120">
+                            <circle cx="60" cy="60" r="54" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                            <circle id="result-ring-fill" cx="60" cy="60" r="54" fill="none" stroke="url(#gradient)" stroke-width="8" stroke-linecap="round" stroke-dasharray="339.292" stroke-dashoffset="339.292"/>
+                            <defs>
+                                <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" style="stop-color:#6366f1"/>
+                                    <stop offset="100%" style="stop-color:#06b6d4"/>
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                        <div class="result-score">
+                            <span id="result-level" class="result-level">A1</span>
+                            <span id="result-percent" class="result-percent">0%</span>
+                        </div>
+                    </div>
+                </div>
+                <h2 id="result-title" class="result-title">¡Evaluación Completa!</h2>
+                <p id="result-description" class="result-description"></p>
+                <div id="result-stats" class="result-stats">
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-correct">0</span>
+                        <span class="stat-label">Correctas</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-accuracy">0%</span>
+                        <span class="stat-label">Precisión</span>
+                    </div>
+                    <div class="stat-card">
+                        <span class="stat-value" id="stat-level">A1</span>
+                        <span class="stat-label">Nivel</span>
+                    </div>
+                </div>
+                <button id="btn-start-learning" class="btn-primary btn-glow">
+                    <span>¡Comenzar a Aprender!</span>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Dashboard -->
+        <div id="dashboard-screen" class="screen">
+            <header class="dashboard-header">
+                <div class="header-left">
+                    <h2 class="greeting" id="greeting-text">Hola</h2>
+                    <div class="streak-badge" id="streak-badge">
+                        <span class="streak-fire">🔥</span>
+                        <span id="streak-count">0</span> días
+                    </div>
+                </div>
+                <div class="header-right">
+                    <div class="level-indicator" id="header-level">
+                        <span class="level-text">A1</span>
+                    </div>
+                    <button id="btn-settings" class="btn-icon" aria-label="Configuración">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Daily Progress Card -->
+            <section class="daily-progress-card" id="daily-progress">
+                <div class="progress-info">
+                    <h3>Progreso de Hoy</h3>
+                    <p id="daily-xp"><span class="xp-value">0</span> / <span class="xp-target">100</span> XP</p>
+                </div>
+                <div class="daily-progress-bar">
+                    <div id="daily-progress-fill" class="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="daily-stats">
+                    <div class="mini-stat">
+                        <span class="mini-stat-icon">📚</span>
+                        <span id="lessons-today">0</span> lecciones
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-stat-icon">✅</span>
+                        <span id="accuracy-today">0%</span> precisión
+                    </div>
+                    <div class="mini-stat">
+                        <span class="mini-stat-icon">⏱️</span>
+                        <span id="time-today">0</span> min
+                    </div>
+                </div>
+            </section>
+
+            <!-- Lesson Categories -->
+            <section class="lesson-categories">
+                <h3 class="section-title">Categorías</h3>
+                <div class="categories-grid" id="categories-grid">
+                    <!-- Categories will be dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Recommended Lesson -->
+            <section class="recommended-section">
+                <h3 class="section-title">Recomendado para ti</h3>
+                <div id="recommended-lesson" class="recommended-card">
+                    <!-- Recommended lesson will be dynamically inserted -->
+                </div>
+            </section>
+
+            <!-- Recent Activity -->
+            <section class="recent-activity">
+                <h3 class="section-title">Actividad Reciente</h3>
+                <div id="activity-list" class="activity-list">
+                    <div class="empty-state">
+                        <span class="empty-icon">📝</span>
+                        <p>Completa tu primera lección para ver tu actividad</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bottom Navigation -->
+            <nav class="bottom-nav" id="bottom-nav">
+                <button class="nav-item active" data-tab="home" id="nav-home">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>
+                    <span>Inicio</span>
+                </button>
+                <button class="nav-item" data-tab="lessons" id="nav-lessons">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>
+                    <span>Lecciones</span>
+                </button>
+                <button class="nav-item" data-tab="practice" id="nav-practice">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+                    <span>Practicar</span>
+                </button>
+                <button class="nav-item" data-tab="progress" id="nav-progress">
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <span>Progreso</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- Lesson Screen -->
+        <div id="lesson-screen" class="screen">
+            <div class="lesson-container">
+                <div class="lesson-header">
+                    <button id="btn-back-lesson" class="btn-icon" aria-label="Volver">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <div class="lesson-progress">
+                        <div class="progress-bar">
+                            <div id="lesson-progress-fill" class="progress-fill"></div>
+                        </div>
+                        <span id="lesson-step-counter" class="progress-text">1/5</span>
+                    </div>
+                    <div class="lesson-xp" id="lesson-xp">
+                        <span class="xp-icon">⭐</span>
+                        <span id="lesson-xp-value">0</span>
+                    </div>
+                </div>
+
+                <div id="lesson-content" class="lesson-content">
+                    <!-- Lesson content will be dynamically inserted -->
+                </div>
+
+                <div id="lesson-feedback" class="lesson-feedback hidden">
+                    <div class="feedback-content">
+                        <div class="feedback-icon" id="feedback-icon">✅</div>
+                        <h3 id="feedback-title">¡Correcto!</h3>
+                        <p id="feedback-message"></p>
+                    </div>
+                </div>
+
+                <div class="lesson-actions">
+                    <button id="btn-check-answer" class="btn-primary">
+                        <span>Verificar</span>
+                    </button>
+                    <button id="btn-next-step" class="btn-primary hidden">
+                        <span>Continuar</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lesson Complete Screen -->
+        <div id="lesson-complete-screen" class="screen">
+            <div class="complete-container">
+                <div class="complete-celebration">
+                    <div class="confetti-container" id="confetti-container"></div>
+                    <div class="complete-icon">🎉</div>
+                    <h2>¡Lección Completada!</h2>
+                </div>
+                <div class="complete-stats">
+                    <div class="complete-stat">
+                        <span class="complete-stat-value" id="complete-xp">+0</span>
+                        <span class="complete-stat-label">XP Ganados</span>
+                    </div>
+                    <div class="complete-stat">
+                        <span class="complete-stat-value" id="complete-accuracy">0%</span>
+                        <span class="complete-stat-label">Precisión</span>
+                    </div>
+                    <div class="complete-stat">
+                        <span class="complete-stat-value" id="complete-time">0:00</span>
+                        <span class="complete-stat-label">Tiempo</span>
+                    </div>
+                </div>
+                <div class="complete-actions">
+                    <button id="btn-next-lesson" class="btn-primary btn-glow">
+                        <span>Siguiente Lección</span>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                    <button id="btn-back-dashboard" class="btn-secondary">
+                        <span>Volver al Inicio</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Practice Screen (Voice) -->
+        <div id="practice-screen" class="screen">
+            <div class="practice-container">
+                <div class="practice-header">
+                    <button id="btn-back-practice" class="btn-icon" aria-label="Volver">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h2>Práctica de Voz</h2>
+                    <div class="practice-level" id="practice-level">A1</div>
+                </div>
+
+                <div class="practice-prompt" id="practice-prompt">
+                    <div class="prompt-english" id="prompt-english">Hello, how are you?</div>
+                    <div class="prompt-spanish" id="prompt-spanish">Hola, ¿cómo estás?</div>
+                    <button id="btn-play-audio" class="btn-audio" aria-label="Escuchar">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 010 14.14M15.54 8.46a5 5 0 010 7.07"/></svg>
+                    </button>
+                </div>
+
+                <div class="voice-visualizer" id="voice-visualizer">
+                    <div class="voice-waves">
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                        <div class="wave"></div>
+                    </div>
+                    <p class="voice-status" id="voice-status">Toca el micrófono para hablar</p>
+                </div>
+
+                <div class="voice-result" id="voice-result">
+                    <div class="voice-transcript" id="voice-transcript"></div>
+                    <div class="voice-score" id="voice-score"></div>
+                </div>
+
+                <div class="practice-actions">
+                    <button id="btn-record" class="btn-record" aria-label="Grabar">
+                        <div class="record-ring"></div>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="currentColor"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2" fill="none" stroke="currentColor" stroke-width="2"/><line x1="12" y1="19" x2="12" y2="23" stroke="currentColor" stroke-width="2"/></svg>
+                    </button>
+                    <button id="btn-next-practice" class="btn-secondary">
+                        <span>Siguiente</span>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Screen -->
+        <div id="progress-screen" class="screen">
+            <div class="progress-container">
+                <div class="progress-header-section">
+                    <button id="btn-back-progress" class="btn-icon" aria-label="Volver">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h2>Tu Progreso</h2>
+                </div>
+
+                <div class="progress-overview">
+                    <div class="overview-card level-card">
+                        <div class="overview-icon">🏆</div>
+                        <div class="overview-info">
+                            <span class="overview-label">Nivel Actual</span>
+                            <span class="overview-value" id="progress-level">A1</span>
+                        </div>
+                        <div class="level-progress-ring">
+                            <svg viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="6"/>
+                                <circle id="level-progress-ring" cx="40" cy="40" r="34" fill="none" stroke="url(#pgradient)" stroke-width="6" stroke-linecap="round" stroke-dasharray="213.628" stroke-dashoffset="213.628"/>
+                                <defs>
+                                    <linearGradient id="pgradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" style="stop-color:#6366f1"/>
+                                        <stop offset="100%" style="stop-color:#06b6d4"/>
+                                    </linearGradient>
+                                </defs>
+                            </svg>
+                            <span id="level-percent">0%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="progress-stats-grid">
+                    <div class="pgrid-card">
+                        <span class="pgrid-icon">📚</span>
+                        <span class="pgrid-value" id="total-lessons">0</span>
+                        <span class="pgrid-label">Lecciones</span>
+                    </div>
+                    <div class="pgrid-card">
+                        <span class="pgrid-icon">📝</span>
+                        <span class="pgrid-value" id="total-words">0</span>
+                        <span class="pgrid-label">Palabras</span>
+                    </div>
+                    <div class="pgrid-card">
+                        <span class="pgrid-icon">🔥</span>
+                        <span class="pgrid-value" id="max-streak">0</span>
+                        <span class="pgrid-label">Racha Máx</span>
+                    </div>
+                    <div class="pgrid-card">
+                        <span class="pgrid-icon">⏱️</span>
+                        <span class="pgrid-value" id="total-time">0h</span>
+                        <span class="pgrid-label">Tiempo</span>
+                    </div>
+                </div>
+
+                <div class="weekly-chart-section">
+                    <h3>Actividad Semanal</h3>
+                    <div class="weekly-chart" id="weekly-chart">
+                        <!-- Chart will be dynamically generated -->
+                    </div>
+                </div>
+
+                <div class="mastered-words-section">
+                    <h3>Palabras Dominadas</h3>
+                    <div class="mastered-words" id="mastered-words">
+                        <div class="empty-state">
+                            <span class="empty-icon">🌱</span>
+                            <p>Las palabras que domines aparecerán aquí</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Screen -->
+        <div id="settings-screen" class="screen">
+            <div class="settings-container">
+                <div class="settings-header">
+                    <button id="btn-back-settings" class="btn-icon" aria-label="Volver">
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+                    </button>
+                    <h2>Configuración</h2>
+                </div>
+                <div class="settings-group">
+                    <h3>Perfil</h3>
+                    <div class="setting-item">
+                        <label>Nombre</label>
+                        <input type="text" id="settings-name" class="setting-input">
+                    </div>
+                    <div class="setting-item">
+                        <label>Meta diaria (XP)</label>
+                        <select id="settings-daily-goal" class="setting-select">
+                            <option value="50">Casual - 50 XP</option>
+                            <option value="100" selected>Regular - 100 XP</option>
+                            <option value="200">Intenso - 200 XP</option>
+                            <option value="300">Extremo - 300 XP</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>Audio y Voz</h3>
+                    <div class="setting-item">
+                        <label>Velocidad de voz</label>
+                        <select id="settings-speech-rate" class="setting-select">
+                            <option value="0.7">Lento</option>
+                            <option value="1" selected>Normal</option>
+                            <option value="1.3">Rápido</option>
+                        </select>
+                    </div>
+                    <div class="setting-item toggle-item">
+                        <label>Auto-reproducir audio</label>
+                        <label class="toggle">
+                            <input type="checkbox" id="settings-autoplay" checked>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="settings-group">
+                    <h3>Datos</h3>
+                    <div class="setting-item">
+                        <button id="btn-reset-progress" class="btn-danger">Reiniciar Progreso</button>
+                    </div>
+                    <div class="setting-item">
+                        <button id="btn-retake-assessment" class="btn-secondary">Repetir Evaluación de Nivel</button>
+                    </div>
+                </div>
+                <div class="settings-footer">
+                    <p>FreeEnglish v1.0</p>
+                    <p>Motor de IA adaptativo local</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast hidden">
+        <span id="toast-icon" class="toast-icon">✅</span>
+        <span id="toast-message" class="toast-message"></span>
+    </div>
+
+    <script src="data/lessons-db.js"></script>
+    <script src="js/storage.js"></script>
+    <script src="js/speech.js"></script>
+    <script src="js/ai-engine.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
