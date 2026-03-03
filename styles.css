@@ -226,37 +226,11 @@ body {
     margin-bottom: 24px;
 }
 
-.logo-icon {
-    width: 80px;
-    height: 80px;
-    background: var(--accent-gradient);
-    border-radius: var(--radius-xl);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 2px;
-    position: relative;
-    z-index: 1;
-    box-shadow: var(--shadow-glow);
-}
-
-.logo-letter {
-    font-size: 28px;
-    font-weight: 800;
-    color: white;
-}
-
-.logo-pulse {
-    position: absolute;
-    top: -10px;
-    left: -10px;
-    right: -10px;
-    bottom: -10px;
-    border-radius: 30px;
-    background: var(--accent-gradient);
-    opacity: 0.3;
-    animation: pulse 2s ease-in-out infinite;
-    z-index: 0;
+.logo-image {
+    width: 180px;
+    height: auto;
+    filter: drop-shadow(0 4px 20px rgba(99, 102, 241, 0.3));
+    animation: float 3s ease-in-out infinite;
 }
 
 .splash-title {

@@ -230,27 +230,31 @@ const App = {
             ${question.context ? `<p class="question-context">${question.context}</p>` : ''}
         `;
 
+        // Shuffle options so correct answer is in a random position
+        const shuffled = this.shuffleOptions(question.options, question.correct);
+
         const optionsArea = document.getElementById('assessment-options');
-        optionsArea.innerHTML = question.options.map((opt, i) => `
+        optionsArea.innerHTML = shuffled.options.map((opt, i) => `
             <button class="option-btn" data-index="${i}" id="assessment-opt-${i}">${opt}</button>
         `).join('');
 
-        // Bind option clicks
+        // Bind option clicks with shuffled correct index
+        const correctIndex = shuffled.correctIndex;
         optionsArea.querySelectorAll('.option-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                this.handleAssessmentAnswer(parseInt(e.target.dataset.index), question);
+                this.handleAssessmentAnswer(parseInt(e.target.dataset.index), question, correctIndex);
             });
         });
     },
 
-    handleAssessmentAnswer(selectedIndex, question) {
-        const correct = selectedIndex === question.correct;
+    handleAssessmentAnswer(selectedIndex, question, correctIndex) {
+        const correct = selectedIndex === correctIndex;
         const buttons = document.querySelectorAll('#assessment-options .option-btn');
 
         buttons.forEach(btn => {
             btn.disabled = true;
             const idx = parseInt(btn.dataset.index);
-            if (idx === question.correct) {
+            if (idx === correctIndex) {
                 btn.classList.add('correct');
             } else if (idx === selectedIndex && !correct) {
                 btn.classList.add('incorrect');
@@ -584,11 +588,15 @@ const App = {
     },
 
     renderMultipleChoiceStep(container, step) {
+        // Shuffle options
+        const shuffled = this.shuffleOptions(step.options, step.correct);
+        this._currentShuffledCorrect = shuffled.correctIndex;
+
         container.innerHTML = `
             <div class="lesson-type-badge">🎯 Selecciona</div>
             <p class="lesson-instruction">${step.instruction}</p>
             <div class="lesson-options" id="lesson-options">
-                ${step.options.map((opt, i) => `
+                ${shuffled.options.map((opt, i) => `
                     <button class="lesson-option" data-index="${i}" id="lesson-opt-${i}">${opt}</button>
                 `).join('')}
             </div>
@@ -657,6 +665,10 @@ const App = {
 
     renderListenChooseStep(container, step) {
         const settings = Storage.getSettings();
+        // Shuffle options
+        const shuffled = this.shuffleOptions(step.options, step.correct);
+        this._currentShuffledCorrect = shuffled.correctIndex;
+
         container.innerHTML = `
             <div class="lesson-type-badge">🎧 Escuchar</div>
             <p class="lesson-instruction">${step.instruction}</p>
@@ -666,7 +678,7 @@ const App = {
                 </button>
             </div>
             <div class="lesson-options" id="lesson-options">
-                ${step.options.map((opt, i) => `
+                ${shuffled.options.map((opt, i) => `
                     <button class="lesson-option" data-index="${i}" id="lesson-opt-${i}" style="grid-column: span 2;">${opt}</button>
                 `).join('')}
             </div>
@@ -767,7 +779,9 @@ const App = {
                     this.showToast('⚠️', 'Selecciona una opción');
                     return;
                 }
-                correct = this.selectedOption === step.correct;
+                const shuffledCorrect = this._currentShuffledCorrect;
+                correct = this.selectedOption === shuffledCorrect;
+                // Find the correct answer text from original options
                 feedbackMessage = correct
                     ? '¡Excelente respuesta!'
                     : `La respuesta correcta es: "${step.options[step.correct]}"`;
@@ -776,7 +790,7 @@ const App = {
                 document.querySelectorAll('.lesson-option').forEach(btn => {
                     btn.disabled = true;
                     const idx = parseInt(btn.dataset.index);
-                    if (idx === step.correct) btn.classList.add('correct');
+                    if (idx === shuffledCorrect) btn.classList.add('correct');
                     else if (idx === this.selectedOption && !correct) btn.classList.add('incorrect');
                 });
                 break;
@@ -1242,6 +1256,24 @@ const App = {
             if (differences > 2) return false;
         }
         return true;
+    },
+
+    /**
+     * Shuffle options array and track the new position of the correct answer
+     * @param {Array} options - Original options array
+     * @param {number} correctIndex - Index of correct answer in original array
+     * @returns {Object} { options: shuffledArray, correctIndex: newCorrectIndex }
+     */
+    shuffleOptions(options, correctIndex) {
+        const correctAnswer = options[correctIndex];
+        const shuffled = [...options];
+        // Fisher-Yates shuffle
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        const newCorrectIndex = shuffled.indexOf(correctAnswer);
+        return { options: shuffled, correctIndex: newCorrectIndex };
     }
 };
 

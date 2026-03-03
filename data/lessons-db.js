@@ -20,86 +20,135 @@ const CATEGORIES = [
 ];
 
 const ASSESSMENT_QUESTIONS = [
-    // A1 Level questions
+    // A1 Level questions (5)
     {
         level: 'A1',
-        type: 'multiple_choice',
-        question: 'What is the correct greeting?',
+        question: 'What is the correct greeting in the morning?',
         context: 'Es la mañana y te encuentras con alguien',
-        options: ['Good morning', 'Good night', 'Goodbye', 'See you'],
-        correct: 0
+        options: ['Good night', 'Good morning', 'Goodbye', 'See you'],
+        correct: 1
     },
     {
         level: 'A1',
-        type: 'multiple_choice',
         question: 'Complete: "My name ___ Maria"',
-        options: ['is', 'are', 'am', 'be'],
-        correct: 0
+        options: ['are', 'am', 'is', 'be'],
+        correct: 2
     },
     {
         level: 'A1',
-        type: 'multiple_choice',
         question: '"How are you?" means:',
-        options: ['¿Cómo estás?', '¿Qué hora es?', '¿Dónde vives?', '¿Cuántos años tienes?'],
-        correct: 0
-    },
-    // A2 Level questions
-    {
-        level: 'A2',
-        type: 'multiple_choice',
-        question: 'Choose the correct past tense:',
-        context: '"Yesterday I ___ to the store"',
-        options: ['went', 'go', 'going', 'goes'],
-        correct: 0
+        options: ['¿Qué hora es?', '¿Dónde vives?', '¿Cuántos años tienes?', '¿Cómo estás?'],
+        correct: 3
     },
     {
+        level: 'A1',
+        question: 'Which one is a color?',
+        options: ['Monday', 'Chair', 'Blue', 'Bread'],
+        correct: 2
+    },
+    {
+        level: 'A1',
+        question: '"Thank you" means:',
+        options: ['Gracias', 'Por favor', 'Lo siento', 'De nada'],
+        correct: 0
+    },
+    // A2 Level questions (5)
+    {
         level: 'A2',
-        type: 'multiple_choice',
+        question: 'Choose the correct past tense: "Yesterday I ___ to the store"',
+        options: ['go', 'went', 'going', 'goes'],
+        correct: 1
+    },
+    {
+        level: 'A2',
         question: 'Which sentence is correct?',
         options: [
-            'She doesn\'t like coffee',
             'She don\'t like coffee',
             'She not like coffee',
+            'She doesn\'t like coffee',
             'She no likes coffee'
         ],
-        correct: 0
+        correct: 2
     },
     {
         level: 'A2',
-        type: 'multiple_choice',
         question: '"I have been waiting for two hours" is in:',
-        options: ['Present Perfect Continuous', 'Simple Past', 'Simple Present', 'Future'],
-        correct: 0
-    },
-    // B1 Level questions
-    {
-        level: 'B1',
-        type: 'multiple_choice',
-        question: 'Complete: "If I ___ rich, I would travel"',
-        options: ['were', 'am', 'will be', 'was being'],
-        correct: 0
+        options: ['Simple Past', 'Simple Present', 'Future', 'Present Perfect Continuous'],
+        correct: 3
     },
     {
-        level: 'B1',
-        type: 'multiple_choice',
-        question: '"She told me that she ___ coming"',
-        options: ['was', 'is', 'will', 'has'],
-        correct: 0
+        level: 'A2',
+        question: 'Complete: "There ___ many people at the party"',
+        options: ['is', 'were', 'was', 'has'],
+        correct: 1
     },
-    // B2 Level questions
+    {
+        level: 'A2',
+        question: 'What does "I\'m looking for the train station" mean?',
+        options: ['Estoy buscando el hospital', 'Estoy buscando la estación de tren', 'Estoy perdido', 'Necesito un taxi'],
+        correct: 1
+    },
+    // B1 Level questions (5)
+    {
+        level: 'B1',
+        question: 'Complete: "If I ___ rich, I would travel the world"',
+        options: ['am', 'were', 'will be', 'was being'],
+        correct: 1
+    },
+    {
+        level: 'B1',
+        question: '"She told me that she ___ coming to the party"',
+        options: ['is', 'will', 'was', 'has'],
+        correct: 2
+    },
+    {
+        level: 'B1',
+        question: 'Choose the correct relative pronoun: "The woman ___ lives next door is a doctor"',
+        options: ['which', 'what', 'whom', 'who'],
+        correct: 3
+    },
+    {
+        level: 'B1',
+        question: '"I wish I ___ speak French fluently"',
+        options: ['can', 'could', 'will', 'would'],
+        correct: 1
+    },
+    {
+        level: 'B1',
+        question: 'What does "although" mean?',
+        options: ['porque', 'aunque', 'sin embargo', 'por lo tanto'],
+        correct: 1
+    },
+    // B2 Level questions (5)
     {
         level: 'B2',
-        type: 'multiple_choice',
         question: 'Which word best completes: "The project was ___ successful"',
-        options: ['overwhelmingly', 'very much', 'so lot', 'plenty'],
+        options: ['very much', 'so lot', 'overwhelmingly', 'plenty'],
+        correct: 2
+    },
+    {
+        level: 'B2',
+        question: '"Had I known earlier, I ___ have acted differently"',
+        options: ['will', 'would', 'can', 'shall'],
+        correct: 1
+    },
+    {
+        level: 'B2',
+        question: '"To beat around the bush" means:',
+        options: ['Correr en el bosque', 'Hablar directamente', 'Dar rodeos', 'Perder el tiempo'],
+        correct: 2
+    },
+    {
+        level: 'B2',
+        question: 'Choose the correct form: "By the time she arrives, we ___"',
+        options: ['will have finished', 'finishing', 'have finish', 'will finishing'],
         correct: 0
     },
     {
         level: 'B2',
-        type: 'multiple_choice',
-        question: '"Had I known earlier, I ___ have acted differently"',
-        options: ['would', 'will', 'can', 'shall'],
-        correct: 0
+        question: '"Notwithstanding the difficulties, they succeeded." What does "notwithstanding" mean?',
+        options: ['debido a', 'a pesar de', 'gracias a', 'en lugar de'],
+        correct: 1
     }
 ];
 
