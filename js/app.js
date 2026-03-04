@@ -1,6 +1,7 @@
 /**
  * FreeEnglish - Main Application
  * Handles all UI interactions, screen navigation, and lesson flow
+ * v2.0 - AI-powered dynamic lesson generation
  */
 
 const App = {
@@ -16,10 +17,14 @@ const App = {
     selectedOption: null,
     practicePhrases: [],
     practiceIndex: 0,
+    isAIMode: false,
+    currentWeakness: null,
 
     // ========== INITIALIZATION ==========
     init() {
         Speech.init();
+        LLMEngine.init();
+        this.isAIMode = LLMEngine.isReady();
 
         // Check if user exists
         const userData = Storage.getUserData();
@@ -28,6 +33,10 @@ const App = {
         setTimeout(() => {
             if (userData && userData.assessmentDone) {
                 Storage.updateStreak();
+                // If no API key configured, prompt for it
+                if (!LLMEngine.isReady()) {
+                    this.showApiKeyModal();
+                }
                 this.showScreen('dashboard-screen');
                 this.renderDashboard();
             } else if (userData) {
@@ -53,8 +62,15 @@ const App = {
 
         // Assessment result
         document.getElementById('btn-start-learning').addEventListener('click', () => {
-            this.showScreen('dashboard-screen');
-            this.renderDashboard();
+            // If AI mode is available, generate first AI lesson immediately
+            if (LLMEngine.isReady()) {
+                this.generateAndStartAILesson();
+            } else {
+                // Show dashboard and prompt for API key
+                this.showScreen('dashboard-screen');
+                this.renderDashboard();
+                this.showApiKeyModal();
+            }
         });
 
         // Dashboard navigation
@@ -113,14 +129,19 @@ const App = {
             this.nextStep();
         });
 
-        // Lesson complete
+        // Lesson complete - AI dynamic flow
         document.getElementById('btn-next-lesson').addEventListener('click', () => {
-            const recommended = AIEngine.getRecommendedLesson(Storage.getUserData().level);
-            if (recommended) {
-                this.startLesson(recommended.lesson, recommended.category);
+            if (LLMEngine.isReady()) {
+                // Generate post-lesson assessment, then next AI lesson
+                this.startPostLessonAssessment();
             } else {
-                this.showScreen('dashboard-screen');
-                this.renderDashboard();
+                const recommended = AIEngine.getRecommendedLesson(Storage.getUserData().level);
+                if (recommended) {
+                    this.startLesson(recommended.lesson, recommended.category);
+                } else {
+                    this.showScreen('dashboard-screen');
+                    this.renderDashboard();
+                }
             }
         });
 
@@ -161,6 +182,27 @@ const App = {
         document.querySelector('.level-indicator')?.addEventListener('click', () => {
             this.showScreen('progress-screen');
             this.renderProgress();
+        });
+
+        // API Key Modal
+        document.getElementById('btn-save-api-key')?.addEventListener('click', () => {
+            const key = document.getElementById('modal-api-key-input').value.trim();
+            if (key.length > 10) {
+                LLMEngine.setApiKey(key);
+                this.isAIMode = true;
+                document.getElementById('api-key-modal').classList.add('hidden');
+                this.showToast('✅', '¡IA configurada! Las lecciones serán generadas dinámicamente.');
+                this.renderDashboard();
+            } else {
+                this.showToast('⚠️', 'La clave API parece inválida');
+            }
+        });
+
+        document.getElementById('btn-skip-api-key')?.addEventListener('click', () => {
+            document.getElementById('api-key-modal').classList.add('hidden');
+            this.isAIMode = false;
+            this.showScreen('dashboard-screen');
+            this.renderDashboard();
         });
     },
 
@@ -266,7 +308,8 @@ const App = {
 
         this.assessmentAnswers.push({
             level: question.level,
-            correct
+            correct,
+            questionType: question.questionType || (question.question.includes('Complete') ? 'grammar' : 'meaning')
         });
 
         setTimeout(() => {
@@ -277,6 +320,11 @@ const App = {
 
     finishAssessment() {
         const result = AIEngine.evaluateLevel(this.assessmentAnswers);
+
+        // Analyze weaknesses for AI lesson generation
+        const weakness = LLMEngine.analyzeWeaknesses(this.assessmentAnswers, result.level);
+        this.currentWeakness = weakness;
+        Storage.saveWeaknessAnalysis(weakness);
 
         // Save to user data
         const userData = Storage.getUserData();
@@ -353,28 +401,53 @@ const App = {
 
     renderCategories(level) {
         const grid = document.getElementById('categories-grid');
-        grid.innerHTML = CATEGORIES.map(cat => {
-            const progress = AIEngine.getCategoryProgress(level, cat.id);
-            const lessons = LESSONS_DB[level]?.[cat.id] || [];
-            return `
-                <div class="category-card" data-category="${cat.id}" id="cat-${cat.id}">
-                    <div class="category-emoji">${cat.emoji}</div>
-                    <div class="category-name">${cat.name}</div>
-                    <div class="category-count">${lessons.length} lecciones</div>
-                    <div class="category-progress">
-                        <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
-                    </div>
-                </div>
-            `;
-        }).join('');
 
-        // Bind category clicks
-        grid.querySelectorAll('.category-card').forEach(card => {
-            card.addEventListener('click', (e) => {
-                const categoryId = e.currentTarget.dataset.category;
-                this.showCategoryLessons(categoryId);
+        if (LLMEngine.isReady()) {
+            // In AI mode, categories trigger AI lesson generation for that focus
+            grid.innerHTML = CATEGORIES.map(cat => {
+                const progress = AIEngine.getCategoryProgress(level, cat.id);
+                return `
+                    <div class="category-card" data-category="${cat.id}" id="cat-${cat.id}">
+                        <div class="category-emoji">${cat.emoji}</div>
+                        <div class="category-name">${cat.name}</div>
+                        <div class="category-count"><span class="ai-generated-badge">🤖 IA</span></div>
+                        <div class="category-progress">
+                            <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.category;
+                    this.generateAndStartAILesson([categoryId]);
+                });
             });
-        });
+        } else {
+            // Fallback: static lessons
+            grid.innerHTML = CATEGORIES.map(cat => {
+                const progress = AIEngine.getCategoryProgress(level, cat.id);
+                const lessons = LESSONS_DB[level]?.[cat.id] || [];
+                return `
+                    <div class="category-card" data-category="${cat.id}" id="cat-${cat.id}">
+                        <div class="category-emoji">${cat.emoji}</div>
+                        <div class="category-name">${cat.name}</div>
+                        <div class="category-count">${lessons.length} lecciones</div>
+                        <div class="category-progress">
+                            <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            grid.querySelectorAll('.category-card').forEach(card => {
+                card.addEventListener('click', (e) => {
+                    const categoryId = e.currentTarget.dataset.category;
+                    this.showCategoryLessons(categoryId);
+                });
+            });
+        }
     },
 
     showCategoryLessons(categoryId) {
@@ -396,34 +469,66 @@ const App = {
     },
 
     renderRecommended(level) {
-        const recommended = AIEngine.getRecommendedLesson(level);
         const container = document.getElementById('recommended-lesson');
+        const weakness = Storage.getWeaknessAnalysis();
 
-        if (!recommended) {
+        if (LLMEngine.isReady()) {
+            // AI-powered recommendation
+            const weakAreas = weakness?.weakAreas || ['vocabulary', 'grammar'];
+            const weakLabels = {
+                vocabulary: '📝 Vocabulario',
+                grammar: '📐 Gramática',
+                translation: '✍️ Traducción',
+                listening: '🎧 Comprensión',
+                phrases: '💬 Frases'
+            };
+
             container.innerHTML = `
-                <div class="empty-state">
-                    <span class="empty-icon">🎉</span>
-                    <p>¡Has completado todas las lecciones de este nivel!</p>
+                <span class="recommended-badge">🤖 Generada por IA</span>
+                <h4 class="recommended-title">🧠 Próxima lección personalizada</h4>
+                <p class="recommended-desc">La IA creará una lección enfocada en tus áreas de mejora</p>
+                <div class="weakness-chips">
+                    ${weakAreas.map(w => `<span class="weakness-chip">${weakLabels[w] || w}</span>`).join('')}
+                </div>
+                <div class="recommended-meta" style="margin-top: 12px;">
+                    <span>⭐ ~25 XP</span>
+                    <span>📝 8 ejercicios</span>
+                    <span>✨ Única para ti</span>
                 </div>
             `;
-            return;
+
+            container.onclick = () => {
+                this.generateAndStartAILesson();
+            };
+        } else {
+            // Fallback to static
+            const recommended = AIEngine.getRecommendedLesson(level);
+            if (!recommended) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="empty-icon">🎉</span>
+                        <p>¡Has completado todas las lecciones de este nivel!</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const cat = CATEGORIES.find(c => c.id === recommended.category);
+            container.innerHTML = `
+                <span class="recommended-badge">${recommended.reason}</span>
+                <h4 class="recommended-title">${cat?.emoji || '📚'} ${recommended.lesson.title}</h4>
+                <p class="recommended-desc">${recommended.lesson.description}</p>
+                <div class="recommended-meta">
+                    <span>⭐ ${recommended.lesson.xpReward} XP</span>
+                    <span>📝 ${recommended.lesson.steps.length} ejercicios</span>
+                    <span>${recommended.isNew ? '🆕 Nueva' : '🔄 Repaso'}</span>
+                </div>
+            `;
+
+            container.onclick = () => {
+                this.startLesson(recommended.lesson, recommended.category);
+            };
         }
-
-        const cat = CATEGORIES.find(c => c.id === recommended.category);
-        container.innerHTML = `
-            <span class="recommended-badge">${recommended.reason}</span>
-            <h4 class="recommended-title">${cat?.emoji || '📚'} ${recommended.lesson.title}</h4>
-            <p class="recommended-desc">${recommended.lesson.description}</p>
-            <div class="recommended-meta">
-                <span>⭐ ${recommended.lesson.xpReward} XP</span>
-                <span>📝 ${recommended.lesson.steps.length} ejercicios</span>
-                <span>${recommended.isNew ? '🆕 Nueva' : '🔄 Repaso'}</span>
-            </div>
-        `;
-
-        container.onclick = () => {
-            this.startLesson(recommended.lesson, recommended.category);
-        };
     },
 
     renderActivity() {
@@ -1244,6 +1349,7 @@ const App = {
         document.getElementById('settings-daily-goal').value = settings.dailyGoal;
         document.getElementById('settings-speech-rate').value = settings.speechRate;
         document.getElementById('settings-autoplay').checked = settings.autoPlay;
+        document.getElementById('settings-api-key').value = Storage.getApiKey();
     },
 
     saveSettings() {
@@ -1255,6 +1361,11 @@ const App = {
         };
 
         Storage.saveSettings(settings);
+
+        // Save API key
+        const apiKey = document.getElementById('settings-api-key').value.trim();
+        LLMEngine.setApiKey(apiKey);
+        this.isAIMode = LLMEngine.isReady();
 
         const userData = Storage.getUserData();
         if (userData && name) {
@@ -1312,6 +1423,159 @@ const App = {
         }
         const newCorrectIndex = shuffled.indexOf(correctAnswer);
         return { options: shuffled, correctIndex: newCorrectIndex };
+    },
+
+    // ========== AI LESSON GENERATION ==========
+    showAILoading(title, subtitle) {
+        const overlay = document.getElementById('ai-loading-overlay');
+        document.getElementById('ai-loading-title').textContent = title || 'Generando tu lección...';
+        document.getElementById('ai-loading-subtitle').textContent = subtitle || 'La IA está creando contenido personalizado para ti';
+        overlay.classList.remove('hidden');
+    },
+
+    hideAILoading() {
+        document.getElementById('ai-loading-overlay').classList.add('hidden');
+    },
+
+    showApiKeyModal() {
+        document.getElementById('api-key-modal').classList.remove('hidden');
+    },
+
+    /**
+     * Generate an AI lesson and start it
+     * @param {Array} focusAreas - Optional specific areas to focus on
+     */
+    async generateAndStartAILesson(focusAreas) {
+        const userData = Storage.getUserData();
+        if (!userData) return;
+
+        const level = userData.level;
+        const weakness = Storage.getWeaknessAnalysis();
+        const weakAreas = focusAreas || weakness?.weakAreas || ['vocabulary', 'grammar'];
+        const previousTopics = LLMEngine.getPreviousTopics();
+
+        this.showAILoading(
+            '🧠 Creando tu lección...',
+            `Analizando tus debilidades y generando ejercicios de nivel ${level}`
+        );
+
+        try {
+            const lesson = await LLMEngine.generateLesson(level, weakAreas, {
+                previousTopics
+            });
+
+            // Save context
+            LLMEngine.saveLessonContext(lesson);
+
+            this.hideAILoading();
+
+            // Determine the primary category
+            const primaryCategory = weakAreas[0] || 'vocabulary';
+            this.startLesson(lesson, primaryCategory);
+
+        } catch (error) {
+            console.error('AI Lesson generation failed:', error);
+            this.hideAILoading();
+
+            // Fallback to static lessons
+            this.showToast('⚠️', 'Error generando lección con IA. Usando lección estática.');
+            const recommended = AIEngine.getRecommendedLesson(level);
+            if (recommended) {
+                this.startLesson(recommended.lesson, recommended.category);
+            } else {
+                this.showScreen('dashboard-screen');
+                this.renderDashboard();
+            }
+        }
+    },
+
+    /**
+     * Start a post-lesson assessment generated by AI
+     */
+    async startPostLessonAssessment() {
+        if (!this.currentLesson || !LLMEngine.isReady()) {
+            this.showScreen('dashboard-screen');
+            this.renderDashboard();
+            return;
+        }
+
+        const userData = Storage.getUserData();
+        const level = userData.level;
+
+        this.showAILoading(
+            '📝 Preparando evaluación...',
+            'Creando preguntas basadas en lo que acabas de aprender'
+        );
+
+        try {
+            const questions = await LLMEngine.generatePostAssessment(this.currentLesson, level);
+
+            this.hideAILoading();
+
+            // Start the assessment with AI-generated questions
+            this.assessmentAnswers = [];
+            this.currentAssessmentIndex = 0;
+            this.generatedAssessment = questions;
+            this._isPostLessonAssessment = true;
+
+            this.showScreen('assessment-screen');
+            this.renderAssessmentQuestion();
+
+        } catch (error) {
+            console.error('Post-assessment generation failed:', error);
+            this.hideAILoading();
+            this.showToast('⚠️', 'Error generando evaluación. Generando nueva lección...');
+            this.generateAndStartAILesson();
+        }
+    },
+
+    /**
+     * Override finishAssessment to handle post-lesson assessments
+     */
+    _originalFinishAssessment: null,
+
+    finishAssessmentFlow() {
+        if (this._isPostLessonAssessment) {
+            this._isPostLessonAssessment = false;
+
+            // Analyze the post-lesson assessment
+            const result = AIEngine.evaluateLevel(this.assessmentAnswers);
+            const weakness = LLMEngine.analyzeWeaknesses(this.assessmentAnswers, result.level);
+            this.currentWeakness = weakness;
+            Storage.saveWeaknessAnalysis(weakness);
+
+            // Show brief result, then generate next lesson
+            this.showScreen('result-screen');
+            this.renderResult(result);
+
+            // Change the "Start Learning" button to generate next AI lesson
+            const btn = document.getElementById('btn-start-learning');
+            btn.querySelector('span').textContent = '¡Siguiente Lección!';
+        } else {
+            this.finishAssessment();
+        }
+    }
+};
+
+// Override finishAssessment to handle both flows
+const _origFinish = App.finishAssessment.bind(App);
+App.finishAssessment = function () {
+    if (this._isPostLessonAssessment) {
+        this._isPostLessonAssessment = false;
+        const result = AIEngine.evaluateLevel(this.assessmentAnswers);
+        const weakness = LLMEngine.analyzeWeaknesses(this.assessmentAnswers, result.level);
+        this.currentWeakness = weakness;
+        Storage.saveWeaknessAnalysis(weakness);
+
+        // Update level if needed
+        const userData = Storage.getUserData();
+        userData.level = result.level;
+        Storage.setUserData(userData);
+
+        this.showScreen('result-screen');
+        this.renderResult(result);
+    } else {
+        _origFinish();
     }
 };
 

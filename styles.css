@@ -2165,3 +2165,250 @@ body {
     background: rgba(99, 102, 241, 0.15);
     border-color: var(--accent-primary);
 }
+
+/* ============ AI LOADING OVERLAY ============ */
+.ai-loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 15, 35, 0.97);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.ai-loading-overlay.hidden {
+    display: none;
+}
+
+.ai-loading-content {
+    text-align: center;
+    padding: 40px;
+    max-width: 340px;
+}
+
+.ai-loading-brain {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    margin: 0 auto 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.brain-pulse {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    background: var(--accent-gradient);
+    animation: brainPulse 2s ease-in-out infinite;
+    opacity: 0.2;
+}
+
+.brain-emoji {
+    font-size: 48px;
+    position: relative;
+    z-index: 1;
+    animation: float 2s ease-in-out infinite;
+}
+
+@keyframes brainPulse {
+    0%, 100% {
+        transform: scale(0.8);
+        opacity: 0.1;
+    }
+    50% {
+        transform: scale(1.3);
+        opacity: 0.3;
+    }
+}
+
+.ai-loading-content h3 {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 8px;
+    background: var(--accent-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.ai-loading-subtitle {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+    margin-bottom: 24px;
+}
+
+.ai-loading-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+}
+
+.ai-loading-dots span {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--accent-primary);
+    animation: dotBounce 1.4s ease-in-out infinite;
+}
+
+.ai-loading-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.ai-loading-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes dotBounce {
+    0%, 80%, 100% {
+        transform: scale(0.6);
+        opacity: 0.3;
+    }
+    40% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ============ MODAL OVERLAY ============ */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 15, 35, 0.95);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100;
+    padding: 20px;
+    animation: fadeIn 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal-content {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-xl);
+    padding: 32px 28px;
+    max-width: 400px;
+    width: 100%;
+    text-align: center;
+    animation: scaleIn 0.3s ease;
+    box-shadow: var(--shadow-lg), 0 0 60px rgba(99, 102, 241, 0.15);
+}
+
+.modal-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+}
+
+.modal-content h3 {
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 12px;
+}
+
+.modal-content p {
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+}
+
+.modal-steps {
+    text-align: left;
+    padding-left: 24px;
+    margin-bottom: 20px;
+    color: var(--text-secondary);
+    font-size: 14px;
+    line-height: 2;
+}
+
+.modal-steps li {
+    padding-left: 4px;
+}
+
+.modal-content .setting-input {
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* ============ SETTINGS HINT ============ */
+.setting-hint {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 6px;
+    line-height: 1.4;
+}
+
+.setting-hint a {
+    text-decoration: none;
+}
+
+.setting-hint a:hover {
+    text-decoration: underline;
+}
+
+/* ============ AI BADGE ON LESSONS ============ */
+.ai-generated-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    background: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(6, 182, 212, 0.2));
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: var(--radius-full);
+    font-size: 10px;
+    font-weight: 600;
+    color: var(--accent-secondary);
+    letter-spacing: 0.5px;
+}
+
+/* ============ WEAKNESS CHIPS ============ */
+.weakness-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+}
+
+.weakness-chip {
+    padding: 4px 10px;
+    background: var(--error-bg);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--error);
+}
+
+.strength-chip {
+    padding: 4px 10px;
+    background: var(--success-bg);
+    border: 1px solid rgba(16, 185, 129, 0.2);
+    border-radius: var(--radius-full);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--success);
+}

@@ -10,7 +10,10 @@ const Storage = {
         LESSONS: 'fe_lessons',
         WORDS: 'fe_words',
         SETTINGS: 'fe_settings',
-        DAILY: 'fe_daily'
+        DAILY: 'fe_daily',
+        API_KEY: 'fe_api_key',
+        AI_HISTORY: 'fe_ai_history',
+        AI_WEAKNESS: 'fe_ai_weakness'
     },
 
     // ============ USER DATA ============
@@ -296,6 +299,33 @@ const Storage = {
     getTotalLessons() {
         const lessons = this.getLessonProgress();
         return Object.values(lessons).reduce((sum, l) => sum + l.completedCount, 0);
+    },
+
+    // ============ AI / LLM ============
+    getApiKey() {
+        return localStorage.getItem(this.KEYS.API_KEY) || '';
+    },
+
+    saveApiKey(key) {
+        localStorage.setItem(this.KEYS.API_KEY, key);
+    },
+
+    getAILessonHistory() {
+        const data = localStorage.getItem(this.KEYS.AI_HISTORY);
+        return data ? JSON.parse(data) : [];
+    },
+
+    saveAILessonHistory(history) {
+        localStorage.setItem(this.KEYS.AI_HISTORY, JSON.stringify(history));
+    },
+
+    getWeaknessAnalysis() {
+        const data = localStorage.getItem(this.KEYS.AI_WEAKNESS);
+        return data ? JSON.parse(data) : null;
+    },
+
+    saveWeaknessAnalysis(analysis) {
+        localStorage.setItem(this.KEYS.AI_WEAKNESS, JSON.stringify(analysis));
     },
 
     // ============ RESET ============
