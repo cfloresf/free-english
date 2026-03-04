@@ -50,7 +50,7 @@ const LLMEngine = {
             throw new Error('API key no configurada. Ve a Configuración para agregar tu clave de Gemini.');
         }
 
-        // Try each model in the fallback chain
+        // Try each model in the fallback chain, but stop on quota/auth errors
         let lastError = null;
         for (let i = 0; i < this.MODELS.length; i++) {
             const model = this.MODELS[(this._currentModelIndex + i) % this.MODELS.length];
@@ -64,9 +64,14 @@ const LLMEngine = {
                 console.warn(`Model ${model} failed:`, error.message);
                 lastError = error;
 
-                // If it's an auth error, don't try other models
+                // Auth errors - don't try other models
                 if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
                     throw new Error('API Key inválida. Verifica tu clave en Configuración → IA Generativa.');
+                }
+
+                // Quota errors - don't try other models (same key = same quota)
+                if (error.message.includes('quota') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+                    throw new Error('Cuota de API agotada. Espera 1 minuto e intenta de nuevo. El plan gratuito permite 15 solicitudes por minuto.');
                 }
             }
         }
