@@ -1,58 +1,153 @@
 /**
- * FreeEnglish - LLM Engine
- * Integrates with Google Gemini API (free tier) to generate dynamic lessons
- * and assessments based on student performance.
+ * FreeEnglish - LLM Engine v3
+ * Hybrid AI: Chrome Built-in AI (Gemini Nano) → Gemini API fallback
+ * Generates dynamic lessons and assessments.
  */
 
 const LLMEngine = {
+    // Gemini API config
     API_BASE: 'https://generativelanguage.googleapis.com/v1beta/models/',
     MODEL: 'gemini-2.0-flash',
 
     _apiKey: null,
+    _mode: 'none', // 'builtin', 'api', 'none'
+    _builtinSession: null,
+    _builtinChecked: false,
+    _builtinAvailable: false,
 
-    init() {
+    /**
+     * Initialize the LLM engine
+     */
+    async init() {
         this._apiKey = Storage.getApiKey();
+
+        // Check for Chrome Built-in AI
+        await this._checkBuiltinAI();
+
+        // Determine mode
+        if (this._builtinAvailable) {
+            this._mode = 'builtin';
+            console.log('🧠 LLM Mode: Chrome Built-in AI (Gemini Nano) - LOCAL');
+        } else if (this._apiKey && this._apiKey.length > 10) {
+            this._mode = 'api';
+            console.log('☁️ LLM Mode: Gemini API (cloud)');
+        } else {
+            this._mode = 'none';
+            console.log('⚠️ LLM Mode: None - no AI available');
+        }
+    },
+
+    /**
+     * Check if Chrome Built-in AI is available
+     */
+    async _checkBuiltinAI() {
+        this._builtinChecked = true;
+        try {
+            if (typeof self !== 'undefined' && self.ai && self.ai.languageModel) {
+                const caps = await self.ai.languageModel.capabilities();
+                if (caps && (caps.available === 'readily' || caps.available === 'after-download')) {
+                    this._builtinAvailable = true;
+                    console.log('✅ Chrome Built-in AI available:', caps.available);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Chrome Built-in AI not available:', e.message);
+        }
+        this._builtinAvailable = false;
+    },
+
+    /**
+     * Get or create a built-in AI session
+     */
+    async _getBuiltinSession() {
+        if (this._builtinSession) return this._builtinSession;
+
+        this._builtinSession = await self.ai.languageModel.create({
+            temperature: 0.8,
+            topK: 40,
+            systemPrompt: 'You are an expert English teacher for Spanish speakers. Always respond with valid JSON only, no markdown, no code fences, no extra text. Follow the exact JSON structure requested.'
+        });
+
+        return this._builtinSession;
     },
 
     setApiKey(key) {
         this._apiKey = key;
         Storage.saveApiKey(key);
+        if (key && key.length > 10 && this._mode === 'none') {
+            this._mode = 'api';
+        }
     },
 
     getApiKey() {
         return this._apiKey;
     },
 
+    /**
+     * Check if any AI is available
+     */
     isReady() {
-        return !!this._apiKey && this._apiKey.length > 10;
+        return this._mode === 'builtin' || (this._mode === 'api' && !!this._apiKey && this._apiKey.length > 10);
     },
 
     /**
-     * Call Gemini API
+     * Get the current mode description
      */
-    async _callAPI(prompt) {
-        if (!this.isReady()) {
-            throw new Error('API key no configurada. Ve a Configuración para agregar tu clave de Gemini.');
-        }
+    getModeLabel() {
+        if (this._mode === 'builtin') return '🧠 IA Local (Gemini Nano)';
+        if (this._mode === 'api') return '☁️ Gemini API';
+        return '❌ Sin IA';
+    },
 
+    /**
+     * Call AI - routes to built-in or API
+     */
+    async _callAI(prompt) {
+        if (this._mode === 'builtin') {
+            return await this._callBuiltinAI(prompt);
+        } else if (this._mode === 'api') {
+            return await this._callGeminiAPI(prompt);
+        } else {
+            throw new Error('No hay IA disponible. Configura tu API key en Configuración.');
+        }
+    },
+
+    /**
+     * Call Chrome Built-in AI (Gemini Nano)
+     */
+    async _callBuiltinAI(prompt) {
         try {
-            return await this._tryCallModel(this.MODEL, prompt);
+            const session = await this._getBuiltinSession();
+            const result = await session.prompt(prompt + '\n\nRespond ONLY with valid JSON. No markdown, no code fences, no explanations.');
+
+            // Clean response
+            let cleaned = result.trim();
+            cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+            return cleaned;
         } catch (error) {
-            if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
-                throw new Error('API Key inválida. Verifica tu clave en Configuración → IA Generativa.');
+            console.warn('Built-in AI failed, trying API fallback:', error.message);
+            // Destroy session on error so it can be recreated
+            this._builtinSession = null;
+
+            // If API key is available, fallback to API
+            if (this._apiKey && this._apiKey.length > 10) {
+                console.log('Falling back to Gemini API...');
+                return await this._callGeminiAPI(prompt);
             }
-            if (error.message.includes('quota') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
-                throw new Error('Cuota agotada. Espera 1 minuto e intenta de nuevo (límite: 15 req/min).');
-            }
-            throw error;
+            throw new Error('IA local falló: ' + error.message);
         }
     },
 
     /**
-     * Try calling a specific model
+     * Call Gemini API (cloud)
      */
-    async _tryCallModel(model, prompt) {
-        const url = `${this.API_BASE}${model}:generateContent?key=${this._apiKey}`;
+    async _callGeminiAPI(prompt) {
+        if (!this._apiKey || this._apiKey.length < 10) {
+            throw new Error('API key no configurada. Ve a Configuración → IA Generativa.');
+        }
+
+        const url = `${this.API_BASE}${this.MODEL}:generateContent?key=${this._apiKey}`;
 
         let response;
         try {
@@ -83,9 +178,17 @@ const LLMEngine = {
                 errMsg = errData.error?.message || errMsg;
             } catch (e) { }
 
+            // Handle specific errors
+            if (errMsg.includes('quota') || errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+                throw new Error('Cuota agotada. Espera 1 minuto e intenta de nuevo.');
+            }
+            if (errMsg.includes('API_KEY') || response.status === 401 || response.status === 403) {
+                throw new Error('API Key inválida. Verifica en Configuración → IA Generativa.');
+            }
+
             // If JSON mode not supported, retry without it
             if (response.status === 400 && errMsg.includes('responseMimeType')) {
-                return await this._tryCallModelPlain(model, prompt);
+                return await this._callGeminiAPIPlain(prompt);
             }
 
             throw new Error(errMsg);
@@ -95,25 +198,24 @@ const LLMEngine = {
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!text) {
-            const blockReason = data.candidates?.[0]?.finishReason;
-            throw new Error(`Respuesta vacía de la IA (${blockReason || 'sin razón'})`);
+            throw new Error('Respuesta vacía de la IA.');
         }
 
         return text;
     },
 
     /**
-     * Fallback: call without responseMimeType (plain text mode)
+     * Fallback: API call without JSON mode
      */
-    async _tryCallModelPlain(model, prompt) {
-        const url = `${this.API_BASE}${model}:generateContent?key=${this._apiKey}`;
+    async _callGeminiAPIPlain(prompt) {
+        const url = `${this.API_BASE}${this.MODEL}:generateContent?key=${this._apiKey}`;
 
         const response = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 contents: [{
-                    parts: [{ text: prompt + '\n\nRespond ONLY with valid JSON, no markdown, no code fences, no extra text.' }]
+                    parts: [{ text: prompt + '\n\nRespond ONLY with valid JSON, no markdown, no code fences.' }]
                 }],
                 generationConfig: {
                     temperature: 0.8,
@@ -130,18 +232,12 @@ const LLMEngine = {
 
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) throw new Error('Empty AI response in plain mode');
+        if (!text) throw new Error('Respuesta vacía.');
 
-        // Clean markdown code fences if present
         return text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     },
 
-    /**
-     * Analyze assessment results and identify weak areas
-     * @param {Array} answers - Assessment answers with level, correct, type info
-     * @param {string} currentLevel - The assigned level
-     * @returns {Object} Weakness analysis
-     */
+    // ========== WEAKNESS ANALYSIS ==========
     analyzeWeaknesses(answers, currentLevel) {
         const analysis = {
             level: currentLevel,
@@ -150,7 +246,6 @@ const LLMEngine = {
             details: {}
         };
 
-        // Categorize answers by type
         const categories = {
             vocabulary: { correct: 0, total: 0 },
             grammar: { correct: 0, total: 0 },
@@ -173,7 +268,6 @@ const LLMEngine = {
             }
         });
 
-        // Identify weak and strong areas
         for (const [cat, data] of Object.entries(categories)) {
             if (data.total === 0) continue;
             const accuracy = data.correct / data.total;
@@ -190,7 +284,6 @@ const LLMEngine = {
             }
         }
 
-        // If no clear weak areas, add areas that aren't strong
         if (analysis.weakAreas.length === 0) {
             for (const [cat, data] of Object.entries(categories)) {
                 if (data.total > 0 && !analysis.strongAreas.includes(cat)) {
@@ -199,7 +292,6 @@ const LLMEngine = {
             }
         }
 
-        // Always ensure at least one area to work on
         if (analysis.weakAreas.length === 0) {
             analysis.weakAreas = ['vocabulary', 'grammar'];
         }
@@ -207,18 +299,12 @@ const LLMEngine = {
         return analysis;
     },
 
-    /**
-     * Generate a complete dynamic lesson using the LLM
-     * @param {string} level - Student's CEFR level (A1, A2, B1, B2)
-     * @param {Array} weakAreas - Areas to focus on
-     * @param {Object} context - Additional context (previous mistakes, etc.)
-     * @returns {Promise<Object>} Generated lesson object
-     */
+    // ========== LESSON GENERATION ==========
     async generateLesson(level, weakAreas, context = {}) {
         const focusAreas = weakAreas.join(', ');
         const previousTopics = context.previousTopics || [];
         const previousTopicsStr = previousTopics.length > 0
-            ? `\nAvoid repeating these topics that were already covered: ${previousTopics.join(', ')}`
+            ? `\nAvoid repeating these topics already covered: ${previousTopics.join(', ')}`
             : '';
 
         const prompt = `You are an expert English teacher creating a lesson for a Spanish-speaking student at CEFR level ${level}.
@@ -230,7 +316,7 @@ Generate a complete English lesson with EXACTLY 8 exercise steps in JSON format.
 
 The lesson MUST include a mix of these exercise types:
 - "learn": Teaching a new word/phrase (2 steps)
-- "multiple_choice": Multiple choice questions (2 steps minimum)  
+- "multiple_choice": Multiple choice questions (2 steps minimum)
 - "translate": Translation exercises Spanish to English (1-2 steps)
 - "listen_choose": Listening comprehension with choices (1 step)
 - "build_sentence": Arrange words into correct order (1 step)
@@ -243,9 +329,9 @@ ${level === 'B2' ? '- Academic, abstract, idiomatic vocabulary\n- Grammar: inver
 
 Return a JSON object with this EXACT structure:
 {
-  "title": "Lesson title in Spanish (descriptive, 3-5 words)",
-  "description": "Brief description in Spanish of what the student will learn",
-  "topic": "The main topic covered (in English, one word like 'greetings' or 'travel')",
+  "title": "Lesson title in Spanish",
+  "description": "Brief description in Spanish",
+  "topic": "main topic in English (one word)",
   "xpReward": 25,
   "steps": [
     {
@@ -253,12 +339,12 @@ Return a JSON object with this EXACT structure:
       "instruction": "Instruction in Spanish",
       "word": "English word or phrase",
       "translation": "Spanish translation",
-      "example": "Example sentence in English using the word",
+      "example": "Example sentence in English",
       "exampleTranslation": "Spanish translation of example"
     },
     {
       "type": "multiple_choice",
-      "instruction": "Question in Spanish about the word/grammar",
+      "instruction": "Question in Spanish",
       "options": ["correct answer", "wrong1", "wrong2", "wrong3"],
       "correct": 0
     },
@@ -266,14 +352,14 @@ Return a JSON object with this EXACT structure:
       "type": "translate",
       "instruction": "Escribe en inglés:",
       "prompt": "Spanish phrase to translate",
-      "answer": "correct english translation (lowercase)",
-      "acceptAlternatives": ["alternative correct answers"]
+      "answer": "correct english translation lowercase",
+      "acceptAlternatives": ["alternative answers"]
     },
     {
       "type": "listen_choose",
       "instruction": "Escucha y selecciona lo que oyes:",
-      "audio": "English phrase to be spoken by TTS",
-      "options": ["the correct phrase", "similar but wrong 1", "similar but wrong 2", "similar but wrong 3"],
+      "audio": "English phrase to speak",
+      "options": ["correct phrase", "wrong 1", "wrong 2", "wrong 3"],
       "correct": 0
     },
     {
@@ -285,47 +371,36 @@ Return a JSON object with this EXACT structure:
   ]
 }
 
-IMPORTANT RULES:
-1. For "multiple_choice": "correct" is the INDEX (0-3) of the correct answer in the options array
-2. For "listen_choose": "correct" is the INDEX of the correct answer, and "audio" is the text to speak
-3. For "translate": "answer" must be lowercase
-4. For "build_sentence": "words" must be 4-7 words, and "answer" is the correct ordered sentence
-5. All instructions must be in Spanish
-6. Content must be appropriate for level ${level}
-7. Make it educational and engaging
-8. Ensure exactly 8 steps
-9. Start with 2 "learn" steps to introduce new vocabulary, then mix exercise types`;
+RULES:
+1. "correct" is the INDEX (0-3) of the correct answer
+2. For "translate": "answer" must be lowercase
+3. For "build_sentence": 4-7 words, "answer" is the correct sentence
+4. All instructions in Spanish
+5. Content appropriate for ${level}
+6. Exactly 8 steps, starting with 2 "learn" steps`;
 
-        const responseText = await this._callAPI(prompt);
+        const responseText = await this._callAI(prompt);
 
         try {
             const lesson = JSON.parse(responseText);
-
-            // Validate and fix the lesson structure
             return this._validateLesson(lesson, level);
         } catch (e) {
-            // Try to extract JSON from the response
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 try {
                     const lesson = JSON.parse(jsonMatch[0]);
                     return this._validateLesson(lesson, level);
                 } catch (e2) {
-                    console.error('JSON parse error:', e2, 'Response:', responseText.substring(0, 200));
+                    console.error('JSON parse error:', e2, 'Response:', responseText.substring(0, 300));
                     throw new Error('La IA respondió con formato inválido. Intenta de nuevo.');
                 }
             }
-            console.error('No JSON found in response:', responseText.substring(0, 200));
+            console.error('No JSON found:', responseText.substring(0, 300));
             throw new Error('La IA no generó una lección válida. Intenta de nuevo.');
         }
     },
 
-    /**
-     * Generate a post-lesson assessment based on what was taught
-     * @param {Object} lesson - The lesson that was just completed
-     * @param {string} level - Student's level
-     * @returns {Promise<Array>} Assessment questions
-     */
+    // ========== POST-LESSON ASSESSMENT ==========
     async generatePostAssessment(lesson, level) {
         const lessonContent = lesson.steps
             .filter(s => s.type === 'learn')
@@ -334,17 +409,14 @@ IMPORTANT RULES:
 
         const prompt = `You are an English teacher assessing a Spanish-speaking student at CEFR ${level} level.
 
-The student just completed a lesson about: "${lesson.title}"
+The student completed a lesson: "${lesson.title}"
 Content covered: ${lessonContent}
 
-Generate EXACTLY 10 assessment questions in JSON format to test if the student learned the material.
+Generate EXACTLY 10 assessment questions as a JSON array.
 
-Mix question types:
-- "meaning": What does this English word mean? (options in Spanish)
-- "grammar": Fill in the blank grammar questions
-- "reverse": How do you say this Spanish word in English? (options in English)
+Mix types: "meaning", "grammar", "reverse"
 
-Return a JSON array with this EXACT structure:
+Return JSON array:
 [
   {
     "level": "${level}",
@@ -352,31 +424,16 @@ Return a JSON array with this EXACT structure:
     "question": "What does \\"word\\" mean?",
     "options": ["correct Spanish", "wrong1", "wrong2", "wrong3"],
     "correct": 0
-  },
-  {
-    "level": "${level}",
-    "questionType": "grammar",
-    "question": "Complete: \\"sentence with ___\\"",
-    "options": ["correct", "wrong1", "wrong2", "wrong3"],
-    "correct": 0
-  },
-  {
-    "level": "${level}",
-    "questionType": "reverse",
-    "question": "¿Cómo se dice \\"spanish word\\" en inglés?",
-    "options": ["correct English", "wrong1", "wrong2", "wrong3"],
-    "correct": 0
   }
 ]
 
 RULES:
-1. "correct" is the INDEX (0-3) of the correct answer
-2. Questions MUST relate to the lesson content
-3. Include at least 3 "meaning", 3 "grammar", and 3 "reverse" questions
-4. Make distractors plausible but clearly wrong
-5. Difficulty must match ${level} level`;
+1. "correct" is the INDEX (0-3) of correct answer
+2. Questions MUST relate to lesson content
+3. At least 3 of each type
+4. Difficulty matches ${level}`;
 
-        const responseText = await this._callAPI(prompt);
+        const responseText = await this._callAI(prompt);
 
         try {
             const questions = JSON.parse(responseText);
@@ -385,26 +442,22 @@ RULES:
             const jsonMatch = responseText.match(/\[[\s\S]*\]/);
             if (jsonMatch) {
                 try {
-                    const questions = JSON.parse(jsonMatch[0]);
-                    return this._validateAssessment(questions, level);
+                    return this._validateAssessment(JSON.parse(jsonMatch[0]), level);
                 } catch (e2) {
-                    throw new Error('Error parsing assessment response');
+                    throw new Error('Error parsing assessment.');
                 }
             }
-            throw new Error('Failed to generate assessment');
+            throw new Error('No se pudo generar la evaluación.');
         }
     },
 
-    /**
-     * Validate and fix lesson structure
-     */
+    // ========== VALIDATION ==========
     _validateLesson(lesson, level) {
         if (!lesson.title) lesson.title = 'Lección Dinámica';
         if (!lesson.description) lesson.description = 'Lección generada por IA';
         if (!lesson.xpReward) lesson.xpReward = 25;
         if (!lesson.topic) lesson.topic = 'general';
 
-        // Generate unique ID
         lesson.id = `ai_${level}_${Date.now()}`;
         lesson.isAIGenerated = true;
 
@@ -412,26 +465,20 @@ RULES:
             throw new Error('Lesson has no steps');
         }
 
-        // Validate each step
         lesson.steps = lesson.steps.filter(step => {
             if (!step || !step.type) return false;
-
             switch (step.type) {
                 case 'learn':
                     return step.word && step.translation;
                 case 'multiple_choice':
                     if (!Array.isArray(step.options) || step.options.length < 2) return false;
-                    if (typeof step.correct !== 'number' || step.correct < 0 || step.correct >= step.options.length) {
-                        step.correct = 0;
-                    }
+                    if (typeof step.correct !== 'number' || step.correct < 0 || step.correct >= step.options.length) step.correct = 0;
                     return !!step.instruction;
                 case 'translate':
                     return step.prompt && step.answer;
                 case 'listen_choose':
                     if (!Array.isArray(step.options) || step.options.length < 2) return false;
-                    if (typeof step.correct !== 'number' || step.correct < 0 || step.correct >= step.options.length) {
-                        step.correct = 0;
-                    }
+                    if (typeof step.correct !== 'number' || step.correct < 0 || step.correct >= step.options.length) step.correct = 0;
                     if (!step.audio) step.audio = step.options[step.correct];
                     return !!step.instruction;
                 case 'build_sentence':
@@ -451,28 +498,19 @@ RULES:
         return lesson;
     },
 
-    /**
-     * Validate assessment questions
-     */
     _validateAssessment(questions, level) {
-        if (!Array.isArray(questions)) {
-            throw new Error('Assessment is not an array');
-        }
+        if (!Array.isArray(questions)) throw new Error('Assessment is not an array');
 
         return questions.filter(q => {
             if (!q || !q.question || !Array.isArray(q.options) || q.options.length < 2) return false;
-            if (typeof q.correct !== 'number' || q.correct < 0 || q.correct >= q.options.length) {
-                q.correct = 0;
-            }
+            if (typeof q.correct !== 'number' || q.correct < 0 || q.correct >= q.options.length) q.correct = 0;
             if (!q.level) q.level = level;
             if (!q.questionType) q.questionType = 'meaning';
             return true;
-        }).slice(0, 10); // Max 10 questions
+        }).slice(0, 10);
     },
 
-    /**
-     * Store lesson history for context
-     */
+    // ========== CONTEXT TRACKING ==========
     saveLessonContext(lesson) {
         const history = Storage.getAILessonHistory();
         history.push({
@@ -483,15 +521,10 @@ RULES:
                 .filter(s => s.type === 'learn')
                 .map(s => ({ en: s.word, es: s.translation }))
         });
-
-        // Keep last 20 lessons
         if (history.length > 20) history.splice(0, history.length - 20);
         Storage.saveAILessonHistory(history);
     },
 
-    /**
-     * Get previous topics to avoid repetition
-     */
     getPreviousTopics() {
         const history = Storage.getAILessonHistory();
         return history.map(h => h.topic).filter(Boolean);

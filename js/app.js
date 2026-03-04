@@ -21,9 +21,9 @@ const App = {
     currentWeakness: null,
 
     // ========== INITIALIZATION ==========
-    init() {
+    async init() {
         Speech.init();
-        LLMEngine.init();
+        await LLMEngine.init();
         this.isAIMode = LLMEngine.isReady();
 
         // Check if user exists
@@ -33,7 +33,7 @@ const App = {
         setTimeout(() => {
             if (userData && userData.assessmentDone) {
                 Storage.updateStreak();
-                // If no API key configured, prompt for it
+                // If no AI available, prompt for API key
                 if (!LLMEngine.isReady()) {
                     this.showApiKeyModal();
                 }
@@ -1350,6 +1350,7 @@ const App = {
         document.getElementById('settings-speech-rate').value = settings.speechRate;
         document.getElementById('settings-autoplay').checked = settings.autoPlay;
         document.getElementById('settings-api-key').value = Storage.getApiKey();
+        document.getElementById('settings-ai-mode').textContent = LLMEngine.getModeLabel();
     },
 
     saveSettings() {

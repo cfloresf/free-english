@@ -534,11 +534,17 @@
                     </div>
                 </div>
                 <div class="settings-group">
-                    <h3>🤖 IA Generativa (Gemini)</h3>
+                    <h3>🤖 IA Generativa</h3>
                     <div class="setting-item">
-                        <label>API Key de Google Gemini</label>
+                        <label>Modo actual</label>
+                        <p class="setting-hint" id="settings-ai-mode">Verificando...</p>
+                    </div>
+                    <div class="setting-item">
+                        <label>API Key de Google Gemini (fallback)</label>
                         <input type="password" id="settings-api-key" class="setting-input" placeholder="AIza...">
-                        <p class="setting-hint">Obtén tu clave gratis en <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent-primary);">Google AI Studio</a></p>
+                        <p class="setting-hint">Si tu navegador soporta IA local, no necesitas API key. Si no, obtén una
+                            gratis en <a href="https://aistudio.google.com/apikey" target="_blank"
+                                style="color: var(--accent-primary);">Google AI Studio</a></p>
                     </div>
                 </div>
                 <div class="settings-group">
@@ -551,7 +557,7 @@
                     </div>
                 </div>
                 <div class="settings-footer">
-                    <p>FreeEnglish v2.0</p>
+                    <p>FreeEnglish v3.0</p>
                     <p>Powered by Gemini AI ✨</p>
                 </div>
             </div>
@@ -572,7 +578,8 @@
                 <span class="brain-emoji">🧠</span>
             </div>
             <h3 id="ai-loading-title">Generando tu lección...</h3>
-            <p id="ai-loading-subtitle" class="ai-loading-subtitle">La IA está creando contenido personalizado para ti</p>
+            <p id="ai-loading-subtitle" class="ai-loading-subtitle">La IA está creando contenido personalizado para ti
+            </p>
             <div class="ai-loading-dots">
                 <span></span><span></span><span></span>
             </div>
@@ -586,11 +593,13 @@
             <h3>Configura tu IA</h3>
             <p>Para generar lecciones personalizadas necesitas una clave gratuita de Google Gemini.</p>
             <ol class="modal-steps">
-                <li>Ve a <a href="https://aistudio.google.com/apikey" target="_blank" style="color: var(--accent-primary);">Google AI Studio</a></li>
+                <li>Ve a <a href="https://aistudio.google.com/apikey" target="_blank"
+                        style="color: var(--accent-primary);">Google AI Studio</a></li>
                 <li>Crea una API Key gratis</li>
                 <li>Pégala aquí abajo</li>
             </ol>
-            <input type="text" id="modal-api-key-input" class="setting-input" placeholder="AIzaSy..." autocomplete="off">
+            <input type="text" id="modal-api-key-input" class="setting-input" placeholder="AIzaSy..."
+                autocomplete="off">
             <div class="modal-actions">
                 <button id="btn-save-api-key" class="btn-primary">Guardar y Continuar</button>
                 <button id="btn-skip-api-key" class="btn-secondary">Usar sin IA (lecciones estáticas)</button>
