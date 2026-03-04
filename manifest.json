@@ -2,7 +2,8 @@
     "name": "FreeEnglish - Aprende Inglés con IA",
     "short_name": "FreeEnglish",
     "description": "Tu tutor personal de inglés con IA adaptativa, reconocimiento de voz y lecciones personalizadas",
-    "start_url": "/",
+    "start_url": "./index.html",
+    "scope": "./",
     "display": "standalone",
     "orientation": "portrait",
     "background_color": "#0f0f23",
@@ -13,7 +14,7 @@
     ],
     "icons": [
         {
-            "src": "logo.png",
+            "src": "./logo.png",
             "sizes": "512x512",
             "type": "image/png",
             "purpose": "any maskable"
