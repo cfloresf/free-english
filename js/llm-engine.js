@@ -5,7 +5,9 @@
  */
 
 const LLMEngine = {
-    API_URL: 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent',
+    API_BASE: 'https://generativelanguage.googleapis.com/v1beta/models/',
+    MODELS: ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'],
+    _currentModelIndex: 0,
 
     _apiKey: null,
 
@@ -39,47 +41,125 @@ const LLMEngine = {
     },
 
     /**
-     * Call Gemini API
+     * Call Gemini API with automatic model fallback
      * @param {string} prompt - The prompt to send
      * @returns {Promise<string>} The response text
      */
     async _callAPI(prompt) {
         if (!this.isReady()) {
-            throw new Error('API key not configured. Go to Settings to add your free Gemini API key.');
+            throw new Error('API key no configurada. Ve a Configuración para agregar tu clave de Gemini.');
         }
 
-        const url = `${this.API_URL}?key=${this._apiKey}`;
+        // Try each model in the fallback chain
+        let lastError = null;
+        for (let i = 0; i < this.MODELS.length; i++) {
+            const model = this.MODELS[(this._currentModelIndex + i) % this.MODELS.length];
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{ text: prompt }]
-                }],
-                generationConfig: {
-                    temperature: 0.8,
-                    topP: 0.95,
-                    topK: 40,
-                    maxOutputTokens: 4096,
-                    responseMimeType: "application/json"
+            try {
+                const result = await this._tryCallModel(model, prompt);
+                // Remember which model worked
+                this._currentModelIndex = (this._currentModelIndex + i) % this.MODELS.length;
+                return result;
+            } catch (error) {
+                console.warn(`Model ${model} failed:`, error.message);
+                lastError = error;
+
+                // If it's an auth error, don't try other models
+                if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
+                    throw new Error('API Key inválida. Verifica tu clave en Configuración → IA Generativa.');
                 }
-            })
-        });
+            }
+        }
+
+        throw lastError || new Error('Todos los modelos de IA fallaron. Intenta más tarde.');
+    },
+
+    /**
+     * Try calling a specific model
+     */
+    async _tryCallModel(model, prompt) {
+        const url = `${this.API_BASE}${model}:generateContent?key=${this._apiKey}`;
+
+        let response;
+        try {
+            response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        temperature: 0.8,
+                        topP: 0.95,
+                        topK: 40,
+                        maxOutputTokens: 4096,
+                        responseMimeType: "application/json"
+                    }
+                })
+            });
+        } catch (networkError) {
+            throw new Error('Error de red. Verifica tu conexión a internet.');
+        }
 
         if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.error?.message || `API Error: ${response.status}`);
+            let errMsg = `Error ${response.status}`;
+            try {
+                const errData = await response.json();
+                errMsg = errData.error?.message || errMsg;
+            } catch (e) { }
+
+            // If JSON mode not supported, retry without it
+            if (response.status === 400 && errMsg.includes('responseMimeType')) {
+                return await this._tryCallModelPlain(model, prompt);
+            }
+
+            throw new Error(errMsg);
         }
 
         const data = await response.json();
         const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!text) {
-            throw new Error('Empty response from AI');
+            const blockReason = data.candidates?.[0]?.finishReason;
+            throw new Error(`Respuesta vacía de la IA (${blockReason || 'sin razón'})`);
         }
 
         return text;
+    },
+
+    /**
+     * Fallback: call without responseMimeType (plain text mode)
+     */
+    async _tryCallModelPlain(model, prompt) {
+        const url = `${this.API_BASE}${model}:generateContent?key=${this._apiKey}`;
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{
+                    parts: [{ text: prompt + '\n\nRespond ONLY with valid JSON, no markdown, no code fences, no extra text.' }]
+                }],
+                generationConfig: {
+                    temperature: 0.8,
+                    maxOutputTokens: 4096
+                }
+            })
+        });
+
+        if (!response.ok) {
+            let errMsg = `Error ${response.status}`;
+            try { errMsg = (await response.json()).error?.message || errMsg; } catch (e) { }
+            throw new Error(errMsg);
+        }
+
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) throw new Error('Empty AI response in plain mode');
+
+        // Clean markdown code fences if present
+        return text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim();
     },
 
     /**
@@ -257,10 +337,12 @@ IMPORTANT RULES:
                     const lesson = JSON.parse(jsonMatch[0]);
                     return this._validateLesson(lesson, level);
                 } catch (e2) {
-                    throw new Error('Failed to parse AI response as valid lesson');
+                    console.error('JSON parse error:', e2, 'Response:', responseText.substring(0, 200));
+                    throw new Error('La IA respondió con formato inválido. Intenta de nuevo.');
                 }
             }
-            throw new Error('Failed to generate lesson: Invalid AI response');
+            console.error('No JSON found in response:', responseText.substring(0, 200));
+            throw new Error('La IA no generó una lección válida. Intenta de nuevo.');
         }
     },
 
@@ -332,7 +414,7 @@ RULES:
                     const questions = JSON.parse(jsonMatch[0]);
                     return this._validateAssessment(questions, level);
                 } catch (e2) {
-                    throw new Error('Failed to parse assessment response');
+                    throw new Error('Error parsing assessment response');
                 }
             }
             throw new Error('Failed to generate assessment');

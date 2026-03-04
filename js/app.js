@@ -1385,7 +1385,7 @@ const App = {
 
         setTimeout(() => {
             toast.classList.add('hidden');
-        }, 3000);
+        }, 5000);
     },
 
     timeAgo(date) {
@@ -1478,7 +1478,7 @@ const App = {
             this.hideAILoading();
 
             // Fallback to static lessons
-            this.showToast('⚠️', 'Error generando lección con IA. Usando lección estática.');
+            this.showToast('⚠️', error.message || 'Error generando lección con IA.');
             const recommended = AIEngine.getRecommendedLesson(level);
             if (recommended) {
                 this.startLesson(recommended.lesson, recommended.category);
