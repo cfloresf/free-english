@@ -6,77 +6,46 @@
 
 const LLMEngine = {
     API_BASE: 'https://generativelanguage.googleapis.com/v1beta/models/',
-    MODELS: ['gemini-2.0-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'],
-    _currentModelIndex: 0,
+    MODEL: 'gemini-2.0-flash',
 
     _apiKey: null,
 
-    /**
-     * Initialize the LLM engine with an API key
-     */
     init() {
         this._apiKey = Storage.getApiKey();
     },
 
-    /**
-     * Set and save the API key
-     */
     setApiKey(key) {
         this._apiKey = key;
         Storage.saveApiKey(key);
     },
 
-    /**
-     * Get the current API key
-     */
     getApiKey() {
         return this._apiKey;
     },
 
-    /**
-     * Check if the LLM is configured and ready
-     */
     isReady() {
         return !!this._apiKey && this._apiKey.length > 10;
     },
 
     /**
-     * Call Gemini API with automatic model fallback
-     * @param {string} prompt - The prompt to send
-     * @returns {Promise<string>} The response text
+     * Call Gemini API
      */
     async _callAPI(prompt) {
         if (!this.isReady()) {
             throw new Error('API key no configurada. Ve a Configuración para agregar tu clave de Gemini.');
         }
 
-        // Try each model in the fallback chain, but stop on quota/auth errors
-        let lastError = null;
-        for (let i = 0; i < this.MODELS.length; i++) {
-            const model = this.MODELS[(this._currentModelIndex + i) % this.MODELS.length];
-
-            try {
-                const result = await this._tryCallModel(model, prompt);
-                // Remember which model worked
-                this._currentModelIndex = (this._currentModelIndex + i) % this.MODELS.length;
-                return result;
-            } catch (error) {
-                console.warn(`Model ${model} failed:`, error.message);
-                lastError = error;
-
-                // Auth errors - don't try other models
-                if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
-                    throw new Error('API Key inválida. Verifica tu clave en Configuración → IA Generativa.');
-                }
-
-                // Quota errors - don't try other models (same key = same quota)
-                if (error.message.includes('quota') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
-                    throw new Error('Cuota de API agotada. Espera 1 minuto e intenta de nuevo. El plan gratuito permite 15 solicitudes por minuto.');
-                }
+        try {
+            return await this._tryCallModel(this.MODEL, prompt);
+        } catch (error) {
+            if (error.message.includes('API_KEY') || error.message.includes('401') || error.message.includes('403')) {
+                throw new Error('API Key inválida. Verifica tu clave en Configuración → IA Generativa.');
             }
+            if (error.message.includes('quota') || error.message.includes('429') || error.message.includes('RESOURCE_EXHAUSTED')) {
+                throw new Error('Cuota agotada. Espera 1 minuto e intenta de nuevo (límite: 15 req/min).');
+            }
+            throw error;
         }
-
-        throw lastError || new Error('Todos los modelos de IA fallaron. Intenta más tarde.');
     },
 
     /**
