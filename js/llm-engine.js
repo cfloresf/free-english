@@ -6,7 +6,7 @@
 
 const LLMEngine = {
     // Gemini API config
-    API_BASE: 'https://generativelanguage.googleapis.com/v1/models/',
+    API_BASE: 'https://generativelanguage.googleapis.com/v1beta/models/',
     MODEL: 'gemini-1.5-flash',
 
     _apiKey: null,
