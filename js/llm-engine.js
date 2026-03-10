@@ -329,14 +329,14 @@ const LLMEngine = {
 The student needs to improve in: ${focusAreas}
 ${previousTopicsStr}
 
-Generate a complete English lesson with EXACTLY 8 exercise steps in JSON format.
+Generate a complete English lesson with EXACTLY 5 exercise steps in JSON format.
 
-The lesson MUST include a mix of these exercise types:
-- "learn": Teaching a new word/phrase (2 steps)
-- "multiple_choice": Multiple choice questions (2 steps minimum)
-- "translate": Translation exercises Spanish to English (1-2 steps)
-- "listen_choose": Listening comprehension with choices (1 step)
-- "build_sentence": Arrange words into correct order (1 step)
+The lesson MUST target exactly 3 new words and 1 useful phrase.
+
+Exercise types to follow:
+- "learn": Teaching one of the 3 new words (3 steps, one per word)
+- "learn": Teaching the useful phrase (1 step)
+- "multiple_choice", "translate", "listen_choose", or "build_sentence" (1 high-quality practice step for the phrase)
 
 Level guidelines for ${level}:
 ${level === 'A1' ? '- Basic vocabulary: greetings, colors, numbers, family, food, animals\n- Grammar: to be, articles a/an/the, simple present\n- Very short sentences, max 5-6 words' : ''}
@@ -394,7 +394,7 @@ RULES:
 3. For "build_sentence": 4-7 words, "answer" is the correct sentence
 4. All instructions in Spanish
 5. Content appropriate for ${level}
-6. Exactly 8 steps, starting with 2 "learn" steps`;
+6. Exactly 5 steps: 3 "learn" (words), 1 "learn" (phrase), 1 "practice" (any type for the phrase or words)`;
 
         const responseText = await this._callAI(prompt);
 
@@ -434,25 +434,27 @@ RULES:
 The student completed a lesson: "${lesson.title}"
 Content covered: ${lessonContent}
 
-Generate EXACTLY 10 assessment questions as a JSON array.
+Generate EXACTLY 5 assessment questions as a JSON array.
 
-Mix types: "meaning", "grammar", "reverse"
+Types: "meaning" (English to Spanish), "grammar" (English gap fill), "reverse" (Spanish to English).
+
+IMPORTANT: ALL questions should test the student's knowledge of ENGLISH. Never ask to fill in Spanish words. If it's a gap fill, the sentence must be in English with an English word missing.
 
 Return JSON array:
 [
   {
     "level": "${level}",
     "questionType": "meaning",
-    "question": "What does \\"word\\" mean?",
-    "options": ["correct Spanish", "wrong1", "wrong2", "wrong3"],
+    "question": "What does \\"English word\\" mean?",
+    "options": ["Correct Spanish", "Wrong 1", "Wrong 2", "Wrong 3"],
     "correct": 0
   }
 ]
 
 RULES:
 1. "correct" is the INDEX (0-3) of correct answer
-2. Questions MUST relate to lesson content
-3. At least 3 of each type
+2. Questions MUST relate to THE SPECIFIC lesson content (${lessonContent})
+3. Exactly 5 questions
 4. Difficulty matches ${level}`;
 
         const responseText = await this._callAI(prompt);
@@ -473,6 +475,77 @@ RULES:
             }
             throw new Error('La IA no pudo generar la evaluación en este momento. Intenta de nuevo.');
         }
+    },
+
+    // ========== INITIAL PLACEMENT ASSESSMENT ==========
+    async generateInitialAssessment() {
+        const prompt = `You are an expert English auditor. Generate a 12-question placement test to determine a student's CEFR level (A1, A2, B1, B2).
+
+The test MUST contain:
+- 3 questions for A1 (Very Basic)
+- 3 questions for A2 (Basic)
+- 3 questions for B1 (Intermediate)
+- 3 questions for B2 (Upper Intermediate)
+
+Return JSON array:
+[
+  {
+    "level": "A1",
+    "questionType": "grammar",
+    "question": "English Sentence with ___ gap",
+    "options": ["correct english", "wrong1", "wrong2", "wrong3"],
+    "correct": 0
+  }
+]
+
+RULES:
+1. EXACTLY 12 questions
+2. Level labels: "A1", "A2", "B1", "B2"
+3. Test ONLY English proficiency.
+4. Return ONLY valid JSON array`;
+
+        const responseText = await this._callAI(prompt);
+
+        try {
+            let cleaned = responseText.trim();
+            cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+            const questions = JSON.parse(cleaned);
+            return questions;
+        } catch (e) {
+            const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+            if (jsonMatch) {
+                try {
+                    return JSON.parse(jsonMatch[0]);
+                } catch (e2) {
+                    throw new Error('Error en el test inicial de IA.');
+                }
+            }
+            throw new Error('No se pudo generar el test inicial.');
+        }
+    },
+
+    calculateLevelFromAssessment(results) {
+        // results is an array of { level, isCorrect }
+        const performance = {
+            A1: { correct: 0, total: 0 },
+            A2: { correct: 0, total: 0 },
+            B1: { correct: 0, total: 0 },
+            B2: { correct: 0, total: 0 }
+        };
+
+        results.forEach(res => {
+            if (performance[res.level]) {
+                performance[res.level].total++;
+                if (res.isCorrect) performance[res.level].correct++;
+            }
+        });
+
+        // Determine level: must have > 60% in current level to unlock next
+        if ((performance.B1.correct / performance.B1.total) > 0.6) return 'B2';
+        if ((performance.A2.correct / performance.A2.total) > 0.6) return 'B1';
+        if ((performance.A1.correct / performance.A1.total) > 0.6) return 'A2';
+        
+        return 'A1';
     },
 
     // ========== VALIDATION ==========

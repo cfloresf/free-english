@@ -131,8 +131,8 @@ const App = {
 
         // Lesson complete - AI dynamic flow
         document.getElementById('btn-next-lesson').addEventListener('click', () => {
-            if (LLMEngine.isReady()) {
-                // Generate post-lesson assessment, then next AI lesson
+            if (this.isAIMode) {
+                // Generate post-lesson assessment
                 this.startPostLessonAssessment();
             } else {
                 const recommended = AIEngine.getRecommendedLesson(Storage.getUserData().level);
@@ -244,11 +244,27 @@ const App = {
     },
 
     // ========== ASSESSMENT ==========
-    startAssessment() {
+    async startAssessment() {
         this.assessmentAnswers = [];
         this.currentAssessmentIndex = 0;
-        // Generate unique assessment questions each time
-        this.generatedAssessment = QuestionGenerator.generateAssessment(5);
+        
+        // Show loading if in AI mode
+        if (this.isAIMode) {
+            this.showAILoading('Preparando evaluación con IA...', 'Estamos creando un test de 12 preguntas de diferentes niveles');
+            try {
+                this.generatedAssessment = await LLMEngine.generateInitialAssessment();
+                this.hideAILoading();
+            } catch (error) {
+                console.error('AI Assessment generation failed:', error);
+                this.hideAILoading();
+                this.showToast('⚠️', 'Error con IA, generando test estándar');
+                this.generatedAssessment = QuestionGenerator.generateAssessment(5);
+            }
+        } else {
+            // Generate unique assessment questions each time
+            this.generatedAssessment = QuestionGenerator.generateAssessment(5);
+        }
+        
         this.renderAssessmentQuestion();
     },
 
@@ -256,7 +272,7 @@ const App = {
         const questions = this.generatedAssessment;
         const question = questions[this.currentAssessmentIndex];
         if (!question) {
-            this.finishAssessment();
+            this.finishAssessmentFlow();
             return;
         }
 
@@ -319,7 +335,22 @@ const App = {
     },
 
     finishAssessment() {
-        const result = AIEngine.evaluateLevel(this.assessmentAnswers);
+        let result;
+        if (this.isAIMode && this.generatedAssessment.length > 5) {
+            // AI Based Leveling
+            const finalLevel = LLMEngine.calculateLevelFromAssessment(this.assessmentAnswers);
+            const correctCount = this.assessmentAnswers.filter(a => a.correct).length;
+            const accuracy = Math.round((correctCount / this.assessmentAnswers.length) * 100);
+            
+            result = {
+                level: finalLevel,
+                accuracy: accuracy,
+                totalCorrect: correctCount,
+                description: `Basado en tu desempeño con la IA, tu nivel estimado es ${finalLevel}.`
+            };
+        } else {
+            result = AIEngine.evaluateLevel(this.assessmentAnswers);
+        }
 
         // Analyze weaknesses for AI lesson generation
         const weakness = LLMEngine.analyzeWeaknesses(this.assessmentAnswers, result.level);
@@ -492,7 +523,7 @@ const App = {
                 </div>
                 <div class="recommended-meta" style="margin-top: 12px;">
                     <span>⭐ ~25 XP</span>
-                    <span>📝 8 ejercicios</span>
+                    <span>📝 5 ejercicios</span>
                     <span>✨ Única para ti</span>
                 </div>
             `;
@@ -1530,11 +1561,6 @@ const App = {
         }
     },
 
-    /**
-     * Override finishAssessment to handle post-lesson assessments
-     */
-    _originalFinishAssessment: null,
-
     finishAssessmentFlow() {
         if (this._isPostLessonAssessment) {
             this._isPostLessonAssessment = false;
@@ -1545,6 +1571,13 @@ const App = {
             this.currentWeakness = weakness;
             Storage.saveWeaknessAnalysis(weakness);
 
+            // Update level if it improved
+            const userData = Storage.getUserData();
+            if (userData.level !== result.level) {
+                userData.level = result.level;
+                Storage.setUserData(userData);
+            }
+
             // Show brief result, then generate next lesson
             this.showScreen('result-screen');
             this.renderResult(result);
@@ -1552,31 +1585,12 @@ const App = {
             // Change the "Start Learning" button to generate next AI lesson
             const btn = document.getElementById('btn-start-learning');
             btn.querySelector('span').textContent = '¡Siguiente Lección!';
+            btn.onclick = () => {
+                this.generateAndStartAILesson();
+            };
         } else {
             this.finishAssessment();
         }
-    }
-};
-
-// Override finishAssessment to handle both flows
-const _origFinish = App.finishAssessment.bind(App);
-App.finishAssessment = function () {
-    if (this._isPostLessonAssessment) {
-        this._isPostLessonAssessment = false;
-        const result = AIEngine.evaluateLevel(this.assessmentAnswers);
-        const weakness = LLMEngine.analyzeWeaknesses(this.assessmentAnswers, result.level);
-        this.currentWeakness = weakness;
-        Storage.saveWeaknessAnalysis(weakness);
-
-        // Update level if needed
-        const userData = Storage.getUserData();
-        userData.level = result.level;
-        Storage.setUserData(userData);
-
-        this.showScreen('result-screen');
-        this.renderResult(result);
-    } else {
-        _origFinish();
     }
 };
 
