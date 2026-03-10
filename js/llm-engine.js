@@ -6,8 +6,8 @@
 
 const LLMEngine = {
     // Gemini API config
-    API_BASE: 'https://generativelanguage.googleapis.com/v1beta/models/',
-    MODEL: 'gemini-2.0-flash',
+    API_BASE: 'https://generativelanguage.googleapis.com/v1/models/',
+    MODEL: 'gemini-1.5-flash',
 
     _apiKey: null,
     _mode: 'none', // 'builtin', 'api', 'none'
@@ -45,14 +45,18 @@ const LLMEngine = {
         try {
             if (typeof self !== 'undefined' && self.ai && self.ai.languageModel) {
                 const caps = await self.ai.languageModel.capabilities();
-                if (caps && (caps.available === 'readily' || caps.available === 'after-download')) {
+                if (caps && caps.available === 'readily') {
                     this._builtinAvailable = true;
-                    console.log('✅ Chrome Built-in AI available:', caps.available);
+                    console.log('✅ Chrome Built-in AI available and ready');
+                    return;
+                } else if (caps && caps.available === 'after-download') {
+                    console.log('⏳ Chrome Built-in AI requires download, falling back to API');
+                    this._builtinAvailable = false;
                     return;
                 }
             }
         } catch (e) {
-            console.warn('Chrome Built-in AI not available:', e.message);
+            console.warn('Chrome Built-in AI check failed:', e.message);
         }
         this._builtinAvailable = false;
     },
@@ -195,10 +199,23 @@ const LLMEngine = {
         }
 
         const data = await response.json();
-        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        let text = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
         if (!text) {
+            // Check for safety blocking
+            if (data.promptFeedback?.blockReason) {
+                throw new Error('La IA bloqueó la respuesta por seguridad: ' + data.promptFeedback.blockReason);
+            }
+            if (data.candidates?.[0]?.finishReason === 'SAFETY') {
+                throw new Error('La respuesta fue bloqueada por filtros de seguridad de la IA.');
+            }
             throw new Error('Respuesta vacía de la IA.');
+        }
+
+        // Extra cleaning for markdown even in JSON mode
+        text = text.trim();
+        if (text.startsWith('```')) {
+            text = text.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
         }
 
         return text;
@@ -382,21 +399,26 @@ RULES:
         const responseText = await this._callAI(prompt);
 
         try {
-            const lesson = JSON.parse(responseText);
+            // Clean before parsing
+            let cleaned = responseText.trim();
+            cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+            
+            const lesson = JSON.parse(cleaned);
             return this._validateLesson(lesson, level);
         } catch (e) {
+            // Try to extract JSON if it's embedded in text
             const jsonMatch = responseText.match(/\{[\s\S]*\}/);
             if (jsonMatch) {
                 try {
                     const lesson = JSON.parse(jsonMatch[0]);
                     return this._validateLesson(lesson, level);
                 } catch (e2) {
-                    console.error('JSON parse error:', e2, 'Response:', responseText.substring(0, 300));
+                    console.error('JSON parse error after match:', e2, 'Response:', responseText.substring(0, 300));
                     throw new Error('La IA respondió con formato inválido. Intenta de nuevo.');
                 }
             }
-            console.error('No JSON found:', responseText.substring(0, 300));
-            throw new Error('La IA no generó una lección válida. Intenta de nuevo.');
+            console.error('No JSON found in response:', responseText.substring(0, 300));
+            throw new Error('La IA no pudo generar una lección válida en este momento. Intenta de nuevo.');
         }
     },
 
@@ -436,7 +458,9 @@ RULES:
         const responseText = await this._callAI(prompt);
 
         try {
-            const questions = JSON.parse(responseText);
+            let cleaned = responseText.trim();
+            cleaned = cleaned.replace(/```json\s*/gi, '').replace(/```\s*/gi, '').trim();
+            const questions = JSON.parse(cleaned);
             return this._validateAssessment(questions, level);
         } catch (e) {
             const jsonMatch = responseText.match(/\[[\s\S]*\]/);
@@ -444,10 +468,10 @@ RULES:
                 try {
                     return this._validateAssessment(JSON.parse(jsonMatch[0]), level);
                 } catch (e2) {
-                    throw new Error('Error parsing assessment.');
+                    throw new Error('Error al procesar la evaluación de la IA.');
                 }
             }
-            throw new Error('No se pudo generar la evaluación.');
+            throw new Error('La IA no pudo generar la evaluación en este momento. Intenta de nuevo.');
         }
     },
 
