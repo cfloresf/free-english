@@ -2412,3 +2412,106 @@ body {
     font-weight: 500;
     color: var(--success);
 }
+/* ============================================
+   Spotify Music Widget
+   ============================================ */
+.spotify-widget {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    background: rgba(30, 30, 66, 0.85);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(99, 102, 241, 0.3);
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    z-index: 2000;
+    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s ease;
+    overflow: hidden;
+    user-select: none;
+}
+
+.spotify-widget.minimized {
+    height: 54px;
+    width: 220px;
+}
+
+.spotify-header {
+    height: 54px;
+    padding: 0 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    background: rgba(99, 102, 241, 0.1);
+}
+
+.spotify-artist-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.music-icon {
+    font-size: 18px;
+    animation: pulse 2s infinite;
+}
+
+.artist-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.spotify-minimize-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.4s ease;
+}
+
+.spotify-widget.minimized #spotify-arrow {
+    d: path(" M18 15l-6-6-6 6\);
+}
+
+.spotify-widget:not(.minimized) #spotify-arrow {
+ d: path(\M6 9l6 6 6-6\);
+}
+
+.spotify-body {
+ padding: 12px;
+ opacity: 1;
+ transition: opacity 0.3s ease;
+}
+
+.spotify-widget.minimized .spotify-body {
+ opacity: 0;
+ pointer-events: none;
+}
+
+@keyframes pulse {
+ 0% { transform: scale(1); opacity: 0.8; }
+ 50% { transform: scale(1.1); opacity: 1; }
+ 100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* Mobile adjustments */
+@media (max-width: 480px) {
+ .spotify-widget {
+ right: 10px;
+ bottom: 85px; /* Above nav bar */
+ width: calc(100% - 20px);
+ max-width: 320px;
+ }
+ 
+ .spotify-widget.minimized {
+ width: 180px;
+ }
+}

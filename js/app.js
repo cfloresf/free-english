@@ -48,6 +48,7 @@ const App = {
         }, 2000);
 
         this.bindEvents();
+        this.initSpotifyWidget();
     },
 
     // ========== EVENT BINDING ==========
@@ -204,6 +205,27 @@ const App = {
             this.showScreen('dashboard-screen');
             this.renderDashboard();
         });
+
+        // Spotify Toggle
+        document.getElementById('spotify-toggle')?.addEventListener('click', () => {
+            this.toggleSpotify();
+        });
+    },
+
+    toggleSpotify() {
+        const widget = document.getElementById('spotify-widget');
+        widget.classList.toggle('minimized');
+    },
+
+    initSpotifyWidget() {
+        // Auto-show after a delay on first load
+        const widget = document.getElementById('spotify-widget');
+        if (widget && !localStorage.getItem('fe_spotify_shown')) {
+            setTimeout(() => {
+                widget.classList.remove('minimized');
+                localStorage.setItem('fe_spotify_shown', 'true');
+            }, 5000);
+        }
     },
 
     // ========== SCREEN MANAGEMENT ==========
