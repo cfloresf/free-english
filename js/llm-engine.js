@@ -326,12 +326,12 @@ const LLMEngine = {
 
         const prompt = `You are an expert English teacher creating a lesson for a Spanish-speaking student at CEFR level ${level}.
 
-The student needs to improve in: ${focusAreas}
+${context.curriculumTopic ? `The focus of this lesson is: "${context.curriculumTopic}"` : `The student needs to improve in: ${focusAreas}`}
 ${previousTopicsStr}
 
 Generate a complete English lesson with EXACTLY 5 exercise steps in JSON format.
 
-The lesson MUST target exactly 3 new words and 1 useful phrase.
+The lesson MUST target exactly 3 new words and 1 useful phrase related to the topic.
 
 Exercise types to follow:
 - "learn": Teaching one of the 3 new words (3 steps, one per word)
@@ -339,10 +339,12 @@ Exercise types to follow:
 - "multiple_choice", "translate", "listen_choose", or "build_sentence" (1 high-quality practice step for the phrase)
 
 Level guidelines for ${level}:
-${level === 'A1' ? '- Basic vocabulary: greetings, colors, numbers, family, food, animals\n- Grammar: to be, articles a/an/the, simple present\n- Very short sentences, max 5-6 words' : ''}
-${level === 'A2' ? '- Daily life vocabulary: travel, shopping, weather, routines\n- Grammar: past simple, present continuous, comparatives\n- Medium sentences, 6-10 words' : ''}
-${level === 'B1' ? '- Work, education, opinions vocabulary\n- Grammar: conditionals, reported speech, relative clauses, present perfect\n- Complex sentences with connectors' : ''}
-${level === 'B2' ? '- Academic, abstract, idiomatic vocabulary\n- Grammar: inversions, future perfect, passive voice, subjunctive\n- Advanced expressions and nuanced language' : ''}
+${level === 'A1' ? '- Basic vocabulary: greetings, colors, family.\n- Grammar: to be, simple present.' : ''}
+${level === 'A2' ? '- Daily life: travel, routines.\n- Grammar: past simple, comparatives.' : ''}
+${level === 'B1' ? '- Work, education.\n- Grammar: present perfect, first conditional.' : ''}
+${level === 'B2' ? '- Global issues, media.\n- Grammar: passive voice, second conditional.' : ''}
+${level === 'C1' ? '- Advanced academic/professional language.\n- Grammar: inversion, mixed conditionals, sophisticated connectors.' : ''}
+${level === 'C2' ? '- Mastery level. Near-native nuances, literary/scientific discourse.\n- Style: metaphors, formal/archaic English, precision of expression.' : ''}
 
 Return a JSON object with this EXACT structure:
 {
@@ -479,13 +481,15 @@ RULES:
 
     // ========== INITIAL PLACEMENT ASSESSMENT ==========
     async generateInitialAssessment() {
-        const prompt = `You are an expert English auditor. Generate a 12-question placement test to determine a student's CEFR level (A1, A2, B1, B2).
+        const prompt = `You are an expert English auditor. Generate an 18-question placement test to determine a student's CEFR level.
 
-The test MUST contain:
-- 3 questions for A1 (Very Basic)
-- 3 questions for A2 (Basic)
+The test MUST be progressive, from very easy to very complex:
+- 3 questions for A1 (Fundamental)
+- 3 questions for A2 (Elementary)
 - 3 questions for B1 (Intermediate)
 - 3 questions for B2 (Upper Intermediate)
+- 3 questions for C1 (Advanced Proficiency)
+- 3 questions for C2 (Mastery)
 
 Return JSON array:
 [
@@ -499,10 +503,11 @@ Return JSON array:
 ]
 
 RULES:
-1. EXACTLY 12 questions
-2. Level labels: "A1", "A2", "B1", "B2"
-3. Test ONLY English proficiency.
-4. Return ONLY valid JSON array`;
+1. EXACTLY 18 questions (3 per level)
+2. Levels: A1, A2, B1, B2, C1, C2
+3. Each question must uniquely represent the difficulty of its level.
+4. Test ONLY English proficiency.
+5. Return ONLY valid JSON array`;
 
         const responseText = await this._callAI(prompt);
 
@@ -530,7 +535,9 @@ RULES:
             A1: { correct: 0, total: 0 },
             A2: { correct: 0, total: 0 },
             B1: { correct: 0, total: 0 },
-            B2: { correct: 0, total: 0 }
+            B2: { correct: 0, total: 0 },
+            C1: { correct: 0, total: 0 },
+            C2: { correct: 0, total: 0 }
         };
 
         results.forEach(res => {
@@ -540,12 +547,21 @@ RULES:
             }
         });
 
-        // Determine level: must have > 60% in current level to unlock next
-        if ((performance.B1.correct / performance.B1.total) > 0.6) return 'B2';
-        if ((performance.A2.correct / performance.A2.total) > 0.6) return 'B1';
-        if ((performance.A1.correct / performance.A1.total) > 0.6) return 'A2';
+        // Determine level: must have > 66% (2/3) in current level to unlock next
+        const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+        let finalLevel = 'A1';
+
+        for (let i = 0; i < levels.length; i++) {
+            const l = levels[i];
+            const rate = performance[l].correct / performance[l].total;
+            if (rate >= 0.6) {
+                finalLevel = l;
+            } else {
+                break; // Stopped at the first level where they failed
+            }
+        }
         
-        return 'A1';
+        return finalLevel;
     },
 
     // ========== VALIDATION ==========

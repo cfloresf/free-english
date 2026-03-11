@@ -432,53 +432,58 @@ const App = {
 
     renderCategories(level) {
         const grid = document.getElementById('categories-grid');
+        const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+        const currentLevelIndex = levels.indexOf(level);
+        
+        // Header for curriculum
+        const sectionTitle = document.querySelector('.section-header h3');
+        if (sectionTitle) sectionTitle.textContent = 'Tu Plan de Estudios (CEFR)';
 
-        if (LLMEngine.isReady()) {
-            // In AI mode, categories trigger AI lesson generation for that focus
-            grid.innerHTML = CATEGORIES.map(cat => {
-                const progress = AIEngine.getCategoryProgress(level, cat.id);
-                return `
-                    <div class="category-card" data-category="${cat.id}" id="cat-${cat.id}">
-                        <div class="category-emoji">${cat.emoji}</div>
-                        <div class="category-name">${cat.name}</div>
-                        <div class="category-count"><span class="ai-generated-badge">🤖 IA</span></div>
-                        <div class="category-progress">
-                            <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
-                        </div>
+        const completedTopics = Storage.getCompletedTopics(level);
+        const totalTopics = CURRICULUM[level]?.length || 0;
+        const progressPercent = Math.round((completedTopics.length / totalTopics) * 100) || 0;
+
+        grid.innerHTML = `
+            <div class="curriculum-container" style="grid-column: 1 / -1; width: 100%;">
+                <div class="level-progress-bar-container" style="margin-bottom: 20px; background: var(--bg-secondary); padding: 15px; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span style="font-weight: 600;">Progreso nivel ${level}</span>
+                        <span style="color: var(--accent-primary); font-weight: bold;">${progressPercent}%</span>
                     </div>
-                `;
-            }).join('');
-
-            grid.querySelectorAll('.category-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    const categoryId = e.currentTarget.dataset.category;
-                    this.generateAndStartAILesson([categoryId]);
-                });
-            });
-        } else {
-            // Fallback: static lessons
-            grid.innerHTML = CATEGORIES.map(cat => {
-                const progress = AIEngine.getCategoryProgress(level, cat.id);
-                const lessons = LESSONS_DB[level]?.[cat.id] || [];
-                return `
-                    <div class="category-card" data-category="${cat.id}" id="cat-${cat.id}">
-                        <div class="category-emoji">${cat.emoji}</div>
-                        <div class="category-name">${cat.name}</div>
-                        <div class="category-count">${lessons.length} lecciones</div>
-                        <div class="category-progress">
-                            <div class="category-progress-fill" style="width: ${progress.percentage}%"></div>
-                        </div>
+                    <div class="progress-track" style="height: 10px; background: rgba(255,255,255,0.05); border-radius: 5px; overflow: hidden;">
+                        <div class="progress-fill" style="width: ${progressPercent}%; height: 100%; background: var(--accent-primary); transition: width 0.5s ease;"></div>
                     </div>
-                `;
-            }).join('');
+                    ${progressPercent >= 100 ? `<p style="margin-top: 10px; font-size: 13px; color: #4ade80;">✨ ¡Nivel completado! Sigue practicando para subir al siguiente.</p>` : ''}
+                </div>
+                
+                <div class="topics-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px;">
+                    ${CURRICULUM[level].map((topic, index) => {
+                        const isCompleted = completedTopics.includes(topic.id);
+                        return `
+                            <div class="category-card curriculum-card ${isCompleted ? 'completed' : ''}" 
+                                 data-topic-id="${topic.id}" 
+                                 style="border-left: 4px solid ${isCompleted ? '#4ade80' : 'var(--accent-primary)'}; opacity: ${isCompleted ? '0.8' : '1'};">
+                                <div style="display: flex; justify-content: space-between; align-items: start;">
+                                    <div>
+                                        <div class="category-name" style="font-size: 15px; margin-bottom: 4px;">${topic.title}</div>
+                                        <div class="category-count" style="font-size: 12px; opacity: 0.7;">${topic.focus.toUpperCase()}</div>
+                                    </div>
+                                    <div class="topic-status-icon">${isCompleted ? '✅' : '📖'}</div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
 
-            grid.querySelectorAll('.category-card').forEach(card => {
-                card.addEventListener('click', (e) => {
-                    const categoryId = e.currentTarget.dataset.category;
-                    this.showCategoryLessons(categoryId);
-                });
+        grid.querySelectorAll('.curriculum-card').forEach(card => {
+            card.addEventListener('click', (e) => {
+                const topicId = e.currentTarget.dataset.topicId;
+                const topic = CURRICULUM[level].find(t => t.id === topicId);
+                this.generateAndStartAILesson([topic.focus], topic);
             });
-        }
+        });
     },
 
     showCategoryLessons(categoryId) {
@@ -501,35 +506,24 @@ const App = {
 
     renderRecommended(level) {
         const container = document.getElementById('recommended-lesson');
-        const weakness = Storage.getWeaknessAnalysis();
+        const completedTopics = Storage.getCompletedTopics(level);
+        const allTopics = CURRICULUM[level];
+        const nextTopic = allTopics.find(t => !completedTopics.includes(t.id)) || allTopics[0];
 
         if (LLMEngine.isReady()) {
-            // AI-powered recommendation
-            const weakAreas = weakness?.weakAreas || ['vocabulary', 'grammar'];
-            const weakLabels = {
-                vocabulary: '📝 Vocabulario',
-                grammar: '📐 Gramática',
-                translation: '✍️ Traducción',
-                listening: '🎧 Comprensión',
-                phrases: '💬 Frases'
-            };
-
             container.innerHTML = `
-                <span class="recommended-badge">🤖 Generada por IA</span>
-                <h4 class="recommended-title">🧠 Próxima lección personalizada</h4>
-                <p class="recommended-desc">La IA creará una lección enfocada en tus áreas de mejora</p>
-                <div class="weakness-chips">
-                    ${weakAreas.map(w => `<span class="weakness-chip">${weakLabels[w] || w}</span>`).join('')}
-                </div>
+                <span class="recommended-badge">🤖 Próximo Paso</span>
+                <h4 class="recommended-title">Continúa con: ${nextTopic.title}</h4>
+                <p class="recommended-desc">Basado en tu plan de estudios de nivel ${level}</p>
                 <div class="recommended-meta" style="margin-top: 12px;">
                     <span>⭐ ~25 XP</span>
                     <span>📝 5 ejercicios</span>
-                    <span>✨ Única para ti</span>
+                    <span>🎯 Enfoque: ${nextTopic.focus.toUpperCase()}</span>
                 </div>
             `;
 
             container.onclick = () => {
-                this.generateAndStartAILesson();
+                this.generateAndStartAILesson([nextTopic.focus], nextTopic);
             };
         } else {
             // Fallback to static
@@ -1160,16 +1154,17 @@ const App = {
             timeSpent
         });
 
-        // Check level up
-        const userData = Storage.getUserData();
-        const newLevel = AIEngine.checkLevelUp(userData);
+        // Mark curriculum topic as completed if applicable
+        if (this.currentLesson.topicId) {
+            Storage.markTopicCompleted(Storage.getUserData().level, this.currentLesson.topicId);
+        }
 
         // Show complete screen
         this.showScreen('lesson-complete-screen');
-        this.renderLessonComplete(totalXP, accuracy, timeSpent, newLevel);
+        this.renderLessonComplete(totalXP, accuracy, timeSpent);
     },
 
-    renderLessonComplete(xp, accuracy, timeSeconds, newLevel) {
+    renderLessonComplete(xp, accuracy, timeSeconds) {
         document.getElementById('complete-xp').textContent = `+${xp}`;
         document.getElementById('complete-accuracy').textContent = `${accuracy}%`;
 
@@ -1179,12 +1174,6 @@ const App = {
 
         // Create confetti
         this.createConfetti();
-
-        if (newLevel) {
-            setTimeout(() => {
-                this.showToast('🎉', `¡Subiste al nivel ${newLevel}!`);
-            }, 1500);
-        }
     },
 
     createConfetti() {
@@ -1473,11 +1462,7 @@ const App = {
         document.getElementById('api-key-modal').classList.remove('hidden');
     },
 
-    /**
-     * Generate an AI lesson and start it
-     * @param {Array} focusAreas - Optional specific areas to focus on
-     */
-    async generateAndStartAILesson(focusAreas) {
+    async generateAndStartAILesson(focusAreas, curriculumTopic) {
         const userData = Storage.getUserData();
         if (!userData) return;
 
@@ -1488,13 +1473,21 @@ const App = {
 
         this.showAILoading(
             '🧠 Creando tu lección...',
-            `Analizando tus debilidades y generando ejercicios de nivel ${level}`
+            curriculumTopic 
+                ? `Diseñando ejercicios sobre "${curriculumTopic.title}" (Nivel ${level})`
+                : `Analizando tus debilidades y generando ejercicios de nivel ${level}`
         );
 
         try {
             const lesson = await LLMEngine.generateLesson(level, weakAreas, {
-                previousTopics
+                previousTopics,
+                curriculumTopic: curriculumTopic?.title
             });
+
+            // Save topic context if it's from curriculum
+            if (curriculumTopic) {
+                lesson.topicId = curriculumTopic.id;
+            }
 
             // Save context
             LLMEngine.saveLessonContext(lesson);
@@ -1502,7 +1495,7 @@ const App = {
             this.hideAILoading();
 
             // Determine the primary category
-            const primaryCategory = weakAreas[0] || 'vocabulary';
+            const primaryCategory = focusAreas?.[0] || curriculumTopic?.focus || 'vocabulary';
             this.startLesson(lesson, primaryCategory);
 
         } catch (error) {
@@ -1571,11 +1564,23 @@ const App = {
             this.currentWeakness = weakness;
             Storage.saveWeaknessAnalysis(weakness);
 
-            // Update level if it improved
+            // Check if user should level up
             const userData = Storage.getUserData();
-            if (userData.level !== result.level) {
-                userData.level = result.level;
-                Storage.setUserData(userData);
+            const completedTopics = Storage.getCompletedTopics(userData.level);
+            const totalTopics = CURRICULUM[userData.level]?.length || 10;
+            const progress = (completedTopics.length / totalTopics);
+
+            // Level up only if 100% curriculum is done AND accuracy is good
+            if (progress >= 1.0 && result.accuracy >= 70) {
+                const levels = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+                const idx = levels.indexOf(userData.level);
+                if (idx < levels.length - 1) {
+                    userData.level = levels[idx + 1];
+                    Storage.setUserData(userData);
+                    result.description = `¡Increíble! Has completado el currículo y avanzado al nivel ${userData.level}.`;
+                }
+            } else {
+                result.description = `Has completado la lección. Progreso de nivel: ${Math.round(progress * 100)}%`;
             }
 
             // Show brief result, then generate next lesson
@@ -1584,9 +1589,10 @@ const App = {
 
             // Change the "Start Learning" button to generate next AI lesson
             const btn = document.getElementById('btn-start-learning');
-            btn.querySelector('span').textContent = '¡Siguiente Lección!';
+            btn.querySelector('span').textContent = 'Continuar Plan';
             btn.onclick = () => {
-                this.generateAndStartAILesson();
+                this.showScreen('dashboard-screen');
+                this.renderDashboard();
             };
         } else {
             this.finishAssessment();

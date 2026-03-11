@@ -13,7 +13,8 @@ const Storage = {
         DAILY: 'fe_daily',
         API_KEY: 'fe_api_key',
         AI_HISTORY: 'fe_ai_history',
-        AI_WEAKNESS: 'fe_ai_weakness'
+        AI_WEAKNESS: 'fe_ai_weakness',
+        CURRICULUM: 'fe_curriculum_progress'
     },
 
     // ============ USER DATA ============
@@ -247,6 +248,23 @@ const Storage = {
 
     saveSettings(settings) {
         localStorage.setItem(this.KEYS.SETTINGS, JSON.stringify(settings));
+    },
+
+    // ============ CURRICULUM ============
+    getCompletedTopics(level) {
+        const data = localStorage.getItem(this.KEYS.CURRICULUM);
+        const progress = data ? JSON.parse(data) : {};
+        return progress[level] || [];
+    },
+
+    markTopicCompleted(level, topicId) {
+        const data = localStorage.getItem(this.KEYS.CURRICULUM);
+        const progress = data ? JSON.parse(data) : {};
+        if (!progress[level]) progress[level] = [];
+        if (!progress[level].includes(topicId)) {
+            progress[level].push(topicId);
+        }
+        localStorage.setItem(this.KEYS.CURRICULUM, JSON.stringify(progress));
     },
 
     // ============ PROGRESS HISTORY ============
