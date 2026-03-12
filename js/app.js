@@ -214,7 +214,7 @@ const App = {
 
     toggleSpotify() {
         const widget = document.getElementById('spotify-widget');
-        widget.classList.toggle('minimized');
+        widget.classList.toggle('active');
     },
 
     initSpotifyWidget() {
@@ -222,9 +222,9 @@ const App = {
         const widget = document.getElementById('spotify-widget');
         if (widget && !localStorage.getItem('fe_spotify_shown')) {
             setTimeout(() => {
-                widget.classList.remove('minimized');
+                widget.classList.add('active');
                 localStorage.setItem('fe_spotify_shown', 'true');
-            }, 5000);
+            }, 3000);
         }
     },
 

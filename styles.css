@@ -2413,105 +2413,93 @@ body {
     color: var(--success);
 }
 /* ============================================
-   Spotify Music Widget
+   Spotify Music Widget - Floating Bubble
    ============================================ */
 .spotify-widget {
     position: fixed;
-    bottom: 20px;
-    right: 20px;
-    width: 300px;
-    background: rgba(30, 30, 66, 0.85);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-    border: 1px solid rgba(99, 102, 241, 0.3);
-    border-radius: 16px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    z-index: 2000;
-    transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), height 0.4s ease;
-    overflow: hidden;
-    user-select: none;
-}
-
-.spotify-widget.minimized {
-    height: 54px;
-    width: 220px;
-}
-
-.spotify-header {
-    height: 54px;
-    padding: 0 16px;
+    bottom: 25px;
+    left: 20px;
+    z-index: 2500;
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    cursor: pointer;
-    background: rgba(99, 102, 241, 0.1);
+    flex-direction: column-reverse;
+    align-items: flex-start;
+    pointer-events: none;
 }
 
-.spotify-artist-info {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-.music-icon {
-    font-size: 18px;
-    animation: pulse 2s infinite;
-}
-
-.artist-name {
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.spotify-minimize-btn {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
+.spotify-bubble {
+    width: 50px;
+    height: 50px;
+    background: var(--accent-gradient);
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: transform 0.4s ease;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 15px rgba(99, 102, 241, 0.4);
+    cursor: pointer;
+    pointer-events: auto;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    z-index: 2100;
 }
 
-.spotify-widget.minimized #spotify-arrow {
-    d: path(" M18 15l-6-6-6 6\);
+.spotify-bubble:hover {
+    transform: scale(1.1);
 }
 
-.spotify-widget:not(.minimized) #spotify-arrow {
- d: path(\M6 9l6 6 6-6\);
+.spotify-bubble .music-icon {
+    font-size: 20px;
 }
 
-.spotify-body {
- padding: 12px;
- opacity: 1;
- transition: opacity 0.3s ease;
+.spotify-bubble .close-icon {
+    display: none;
+    font-size: 20px;
+    font-weight: bold;
+    color: white;
 }
 
-.spotify-widget.minimized .spotify-body {
- opacity: 0;
- pointer-events: none;
+.spotify-player-container {
+    position: absolute;
+    bottom: 60px;
+    left: 0;
+    width: 320px;
+    background: rgba(30, 30, 66, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: translateY(20px) scale(0.9);
+    transform-origin: bottom left;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    pointer-events: none;
+    overflow: hidden;
+    padding: 8px;
 }
 
-@keyframes pulse {
- 0% { transform: scale(1); opacity: 0.8; }
- 50% { transform: scale(1.1); opacity: 1; }
- 100% { transform: scale(1); opacity: 0.8; }
+.spotify-widget.active .spotify-player-container {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.spotify-widget.active .spotify-bubble .music-icon {
+    display: none;
+}
+
+.spotify-widget.active .spotify-bubble .close-icon {
+    display: block;
 }
 
 /* Mobile adjustments */
 @media (max-width: 480px) {
- .spotify-widget {
- right: 10px;
- bottom: 85px; /* Above nav bar */
- width: calc(100% - 20px);
- max-width: 320px;
- }
- 
- .spotify-widget.minimized {
- width: 180px;
- }
+    .spotify-widget {
+        bottom: 85px; 
+        left: 15px;
+    }
+    
+    .spotify-player-container {
+        width: calc(100vw - 30px);
+        max-width: 300px;
+    }
 }
+
