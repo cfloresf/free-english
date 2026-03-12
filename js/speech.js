@@ -66,12 +66,17 @@ const Speech = {
                 utterance.voice = this.englishVoice;
             }
 
-            utterance.onend = () => resolve();
+            utterance.onend = () => {
+                if (window.App && window.App.resumeSpotify) window.App.resumeSpotify();
+                resolve();
+            };
             utterance.onerror = (e) => {
+                if (window.App && window.App.resumeSpotify) window.App.resumeSpotify();
                 if (e.error !== 'interrupted') reject(e);
                 else resolve();
             };
 
+            if (window.App && window.App.pauseSpotify) window.App.pauseSpotify();
             this.synth.speak(utterance);
         });
     },
@@ -126,7 +131,12 @@ const Speech = {
             }
         };
 
+        this.recognition.onstart = () => {
+            if (window.App && window.App.pauseSpotify) window.App.pauseSpotify();
+            this.isRecording = true;
+        };
         this.recognition.onend = () => {
+            if (window.App && window.App.resumeSpotify) window.App.resumeSpotify();
             this.isRecording = false;
             if (onEnd) onEnd();
         };

@@ -57,6 +57,11 @@
                         <h3>Práctica con Voz</h3>
                         <p>Pronunciación y conversación</p>
                     </div>
+                    <div class="step-card" data-step="4">
+                        <div class="step-icon">🎵</div>
+                        <h3>Música Lo-Fi</h3>
+                        <p>Aprende con tus ritmos</p>
+                    </div>
                 </div>
                 <div class="name-input-group">
                     <label for="user-name">¿Cómo te llamas?</label>
@@ -608,17 +613,14 @@
     </div>
 
     <!-- Spotify Music Widget - Bubble Design -->
+    <script src="https://open.spotify.com/embed/iframe-api" async></script>
     <div id="spotify-widget" class="spotify-widget">
         <div class="spotify-bubble" id="spotify-toggle">
             <span class="music-icon">🎵</span>
             <span class="close-icon">✕</span>
         </div>
-        <div class="spotify-player-container">
-            <iframe id="spotify-iframe" style="border-radius:12px"
-                src="https://open.spotify.com/embed/artist/0YERaAlqBjUVFTJevGHGcD?utm_source=generator&theme=0"
-                width="100%" height="352" frameBorder="0" allowfullscreen=""
-                allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                loading="lazy"></iframe>
+        <div class="spotify-player-container" id="spotify-api-container">
+            <!-- Spotify Embed API will be injected here -->
         </div>
     </div>
 

@@ -19,6 +19,8 @@ const App = {
     practiceIndex: 0,
     isAIMode: false,
     currentWeakness: null,
+    spotifyController: null,
+    _shouldResumeSpotify: false,
 
     // ========== INITIALIZATION ==========
     async init() {
@@ -225,6 +227,20 @@ const App = {
                 widget.classList.add('active');
                 localStorage.setItem('fe_spotify_shown', 'true');
             }, 3000);
+        }
+    },
+
+    pauseSpotify() {
+        if (this.spotifyController) {
+            this.spotifyController.pause();
+            this._shouldResumeSpotify = true;
+        }
+    },
+
+    resumeSpotify() {
+        if (this.spotifyController && this._shouldResumeSpotify) {
+            this.spotifyController.resume();
+            this._shouldResumeSpotify = false;
         }
     },
 
@@ -1620,6 +1636,21 @@ const App = {
             this.finishAssessment();
         }
     }
+};
+
+// Global callback for Spotify Iframe API
+window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    const element = document.getElementById('spotify-api-container');
+    const options = {
+        uri: 'spotify:artist:0YERaAlqBjUVFTJevGHGcD',
+        width: '100%',
+        height: '352',
+        theme: '0'
+    };
+    const callback = (EmbedController) => {
+        App.spotifyController = EmbedController;
+    };
+    IFrameAPI.createController(element, options, callback);
 };
 
 // Initialize app when DOM is ready
