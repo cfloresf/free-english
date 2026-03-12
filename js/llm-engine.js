@@ -324,19 +324,23 @@ const LLMEngine = {
             ? `\nAvoid repeating these topics already covered: ${previousTopics.join(', ')}`
             : '';
 
-        const prompt = `You are an expert English teacher creating a lesson for a Spanish-speaking student at CEFR level ${level}.
+        const prompt = `You are a professional English teacher creating a lesson for a Spanish-speaking student at CEFR level ${level}.
 
 ${context.curriculumTopic ? `The focus of this lesson is: "${context.curriculumTopic}"` : `The student needs to improve in: ${focusAreas}`}
 ${previousTopicsStr}
 
 Generate a complete English lesson with EXACTLY 5 exercise steps in JSON format.
 
-The lesson MUST target exactly 3 new words and 1 useful phrase related to the topic.
+RULES:
+1. NO COGNATES: Avoid words like "efficient", "important", etc. where the Spanish equivalent is almost identical.
+2. CONTEXT DRIVEN: Exercises should focus on how words/phrases are used in real sentences, not just simple translations.
+3. GRAMMAR INTEGRATION: Ensure exercises incorporate the grammar points for the ${level} level.
+4. TARGET: Exactly 3 new challenging words and 1 useful phrase related to the topic.
 
 Exercise types to follow:
-- "learn": Teaching one of the 3 new words (3 steps, one per word)
+- "learn": Teaching one of the 3 target words (3 steps)
 - "learn": Teaching the useful phrase (1 step)
-- "multiple_choice", "translate", "listen_choose", or "build_sentence" (1 high-quality practice step for the phrase)
+- "multiple_choice", "translate", "listen_choose", or "build_sentence": A high-quality practice step that tests the usage in context.
 
 Level guidelines for ${level}:
 ${level === 'A1' ? '- Basic vocabulary: greetings, colors, family.\n- Grammar: to be, simple present.' : ''}
@@ -481,33 +485,34 @@ RULES:
 
     // ========== INITIAL PLACEMENT ASSESSMENT ==========
     async generateInitialAssessment() {
-        const prompt = `You are an expert English auditor. Generate an 18-question placement test to determine a student's CEFR level.
+        const prompt = `You are a strict CEFR English auditor. Generate an 18-question placement test that is NOT based on simple translations, but on context, grammar, and nuanced understanding.
 
-The test MUST be progressive, from very easy to very complex:
-- 3 questions for A1 (Fundamental)
-- 3 questions for A2 (Elementary)
-- 3 questions for B1 (Intermediate)
-- 3 questions for B2 (Upper Intermediate)
-- 3 questions for C1 (Advanced Proficiency)
-- 3 questions for C2 (Mastery)
+The test MUST be progressive:
+- A1: 3 questions (Present simple, "vErb to be", very basic context)
+- A2: 3 questions (Past simple, simple comparisons, routines)
+- B1: 3 questions (Present perfect, future with "will/going to", connectors)
+- B2: 3 questions (Conditionals, passive voice, modal verbs of deduction)
+- C1: 3 questions (Inversions, mixed conditionals, advanced phrasal verbs, academic/business nuance)
+- C2: 3 questions (Nuances of feeling, literary/archaic structures, precise scientific/abstract discourse)
 
-Return JSON array:
+STRICT RULES:
+1. NO COGNATES: Do not use words like "efficient" where the translation "eficiente" is obvious.
+2. CONTEXT DRIVEN: Questions must be sentences or short dialogues with a gap. 
+3. TRICKY DISTRACTORS: Options should include common learner errors or similar-sounding but contextually wrong words.
+4. FOCUS: Focus on verb conjugations, complex tenses (Future Perfect, Past Perfect Continuous), and subtle meanings.
+5. NO SPANISH in questions: Test only English proficiency.
+6. Return EXACTLY 18 questions in a JSON array:
 [
   {
-    "level": "A1",
+    "level": "C1",
     "questionType": "grammar",
-    "question": "English Sentence with ___ gap",
-    "options": ["correct english", "wrong1", "wrong2", "wrong3"],
+    "question": "Had I known about the consequences, I ___ my decision to leave.",
+    "options": ["would never have made", "had never made", "will never make", "would not make"],
     "correct": 0
   }
 ]
 
-RULES:
-1. EXACTLY 18 questions (3 per level)
-2. Levels: A1, A2, B1, B2, C1, C2
-3. Each question must uniquely represent the difficulty of its level.
-4. Test ONLY English proficiency.
-5. Return ONLY valid JSON array`;
+Return ONLY the valid JSON array.`;
 
         const responseText = await this._callAI(prompt);
 
